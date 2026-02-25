@@ -1,0 +1,11 @@
+{
+  "name": "spades",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev:server": "cd apps/server && npm run dev",
+    "dev:web": "cd apps/web && npm run dev"
+  },
+  "license": "ISC"
+}
