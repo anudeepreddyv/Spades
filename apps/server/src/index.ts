@@ -58,7 +58,6 @@ io.on('connection', (socket) => {
       teamMode,
       numTeams: configPartial.numTeams,
       allowNil: true,
-      allowBlindNil: true,
       ...configPartial,
     };
 

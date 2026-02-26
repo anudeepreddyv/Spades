@@ -7,7 +7,7 @@ export interface Card {
   id: string;
 }
 
-export type BidValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 'nil' | 'blind_nil';
+export type BidValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 'nil';
 
 export type TeamMode =
   | 'individual'          // everyone for themselves
@@ -33,7 +33,7 @@ export interface Trick {
   leadSuit: Suit | null;
 }
 
-export type GamePhase = 'waiting' | 'bidding' | 'playing' | 'scoring' | 'finished';
+export type GamePhase = 'waiting' | 'dealing' | 'bidding' | 'playing' | 'scoring' | 'finished';
 
 // One score entry per team (or per player in individual mode)
 export interface TeamScore {
@@ -49,7 +49,6 @@ export interface GameConfig {
   teamMode: TeamMode;
   numTeams?: number;         // explicit team count (overrides teamMode default)
   allowNil: boolean;
-  allowBlindNil: boolean;
   // No targetScore — fixed 13 rounds
 }
 
@@ -69,6 +68,7 @@ export interface GameState {
   round: number;        // 1–13: round N deals N cards per player
   dealerIndex: number;
   winner: number | null; // winning teamIndex
+  lastTrickCards: Record<string, Card | null>; // last card played per player for UI
 }
 
 export interface PublicGameState extends Omit<GameState, 'hands'> {
