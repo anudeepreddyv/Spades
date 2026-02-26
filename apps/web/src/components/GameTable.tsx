@@ -75,9 +75,9 @@ function cardZoneXY(i: number, total: number): XY {
 const MY_CARD_ZONE: XY = { x: '50%', y: '78%', anchor: 'translate(-50%, -50%)' };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Dealing animation
+// Dealer splash — FULL SCREEN, shown for 2 seconds before each round
 // ─────────────────────────────────────────────────────────────────────────────
-function DealingAnimation({ dealer, round, onDone }: { dealer?: Player; round: number; onDone: () => void }) {
+function DealerSplash({ dealer, round, onDone }: { dealer?: Player; round: number; onDone: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDone, 2000);
     return () => clearTimeout(t);
@@ -85,30 +85,96 @@ function DealingAnimation({ dealer, round, onDone }: { dealer?: Player; round: n
 
   return (
     <div style={{
-      position: 'absolute', inset: 0, zIndex: 60,
+      position: 'fixed', inset: 0, zIndex: 200,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(5,15,8,0.75)',
-      animation: 'dealFade 2s ease forwards',
+      background: 'rgba(4,12,6,0.93)',
+      animation: 'splashFade 2s ease forwards',
+      backdropFilter: 'blur(6px)',
     }}>
       <style>{`
-        @keyframes dealFade { 0%{opacity:0} 12%{opacity:1} 78%{opacity:1} 100%{opacity:0} }
-        @keyframes cardBounce {
-          0%  { transform: scale(0.2) rotate(-25deg) translateY(40px); opacity:0; }
-          55% { transform: scale(1.12) rotate(4deg) translateY(-6px); opacity:1; }
-          80% { transform: scale(0.97) rotate(-1deg) translateY(2px); opacity:1; }
-          100%{ transform: scale(1) rotate(0deg) translateY(0); opacity:1; }
+        @keyframes splashFade {
+          0%   { opacity: 0; }
+          12%  { opacity: 1; }
+          78%  { opacity: 1; }
+          100% { opacity: 0; }
         }
-        @keyframes textIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes cardDrop {
+          0%   { transform: scale(0.15) rotate(-30deg) translateY(-60px); opacity: 0; }
+          55%  { transform: scale(1.14) rotate(5deg)  translateY(-5px);  opacity: 1; }
+          80%  { transform: scale(0.97) rotate(-1deg) translateY(2px);   opacity: 1; }
+          100% { transform: scale(1)   rotate(0deg)  translateY(0);      opacity: 1; }
+        }
+        @keyframes dealerTextIn {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes cardFly1 {
+          0%   { transform: translate(0,0) rotate(0deg); opacity: 0; }
+          20%  { opacity: 1; }
+          100% { transform: translate(-120px,-80px) rotate(-25deg); opacity: 0.15; }
+        }
+        @keyframes cardFly2 {
+          0%   { transform: translate(0,0) rotate(0deg); opacity: 0; }
+          20%  { opacity: 1; }
+          100% { transform: translate(120px,-80px) rotate(25deg); opacity: 0.15; }
+        }
+        @keyframes cardFly3 {
+          0%   { transform: translate(0,0) rotate(0deg); opacity: 0; }
+          20%  { opacity: 1; }
+          100% { transform: translate(0,-120px) rotate(10deg); opacity: 0.15; }
+        }
       `}</style>
-      <div style={{ animation: 'cardBounce 0.65s cubic-bezier(0.175,0.885,0.32,1.275) forwards' }}>
+
+      {/* Flying background cards (decorative) */}
+      <div style={{ position: 'absolute', animation: 'cardFly1 1.8s 0.1s ease forwards', opacity: 0 }}><CardBack size="md" /></div>
+      <div style={{ position: 'absolute', animation: 'cardFly2 1.8s 0.15s ease forwards', opacity: 0 }}><CardBack size="md" /></div>
+      <div style={{ position: 'absolute', animation: 'cardFly3 1.8s 0.2s ease forwards', opacity: 0 }}><CardBack size="md" /></div>
+
+      {/* Main card */}
+      <div style={{ animation: 'cardDrop 0.65s cubic-bezier(0.175,0.885,0.32,1.275) forwards', marginBottom: 28, filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.8))' }}>
         <CardBack size="lg" />
       </div>
-      <div style={{ animation: 'textIn 0.4s 0.5s ease both', textAlign: 'center', marginTop: 18 }}>
-        <div style={{ color: '#f5c842', fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 700 }}>
+
+      {/* Text */}
+      <div style={{ animation: 'dealerTextIn 0.4s 0.5s ease both', textAlign: 'center' }}>
+        <div style={{
+          color: '#f5c842',
+          fontFamily: "'Playfair Display', serif",
+          fontSize: 28, fontWeight: 700,
+          textShadow: '0 0 30px rgba(245,200,66,0.5)',
+          marginBottom: 10,
+        }}>
           Round {round} of 13
         </div>
-        <div style={{ color: 'rgba(200,230,200,0.65)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, marginTop: 5 }}>
-          {dealer?.name} is dealing · {round} card{round !== 1 ? 's' : ''} each
+
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 10,
+          background: 'rgba(245,200,66,0.1)',
+          border: '1px solid rgba(245,200,66,0.3)',
+          borderRadius: 12, padding: '10px 22px',
+          marginBottom: 8,
+        }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: '50%',
+            background: 'rgba(245,200,66,0.2)', border: '2px solid rgba(245,200,66,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, fontWeight: 700, color: '#f5c842',
+            fontFamily: "'DM Sans', sans-serif",
+          }}>
+            {dealer?.name?.[0]?.toUpperCase() ?? '?'}
+          </div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ color: '#f5c842', fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 700 }}>
+              {dealer?.name ?? 'Dealer'} deals
+            </div>
+            <div style={{ color: 'rgba(245,200,66,0.55)', fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}>
+              {round} card{round !== 1 ? 's' : ''} each · dealer leads first trick
+            </div>
+          </div>
+        </div>
+
+        <div style={{ color: 'rgba(200,230,200,0.35)', fontFamily: "'DM Sans', sans-serif", fontSize: 11, marginTop: 4 }}>
+          Bidding starts in a moment…
         </div>
       </div>
     </div>
@@ -271,7 +337,7 @@ function MyPanel({ player, state, isMyTurn }: { player: Player; state: PublicGam
             <div>
               <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9, fontFamily: "'DM Sans', sans-serif", textTransform: 'uppercase' as const }}>Bid</div>
               <div style={{ color: '#f5c842', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 17 }}>
-                {bid === 'nil' ? 'NIL' : bid as number}
+                {bid as number}
               </div>
             </div>
             <div>
@@ -369,6 +435,15 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
         }
       `}</style>
 
+      {/* ── Dealer splash (full-screen, above everything) ── */}
+      {showDealing && (
+        <DealerSplash
+          dealer={state.players[state.dealerIndex]}
+          round={state.round}
+          onDone={() => setShowDealing(false)}
+        />
+      )}
+
       {/* ── Top Bar ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 16px', background: 'rgba(0,0,0,0.52)', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -381,9 +456,11 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
           <span style={{ fontSize: 11, color: 'rgba(180,210,180,0.45)', fontFamily: "'DM Sans', sans-serif" }}>Dealer: {state.players[state.dealerIndex]?.name}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 6, fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
+          <div style={{ display: 'flex', gap: 8, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, alignItems: 'center' }}>
             {state.teamScores.map((ts, i) => (
-              <span key={i} style={{ color: TEAM_COLORS[i % TEAM_COLORS.length], fontWeight: 700 }}>{ts.score}</span>
+              <span key={i} style={{ color: TEAM_COLORS[i % TEAM_COLORS.length], fontWeight: 700 }}>
+                {ts.score}{ts.bags > 0 ? <span style={{ fontSize: 9, color: 'rgba(251,191,36,0.7)', marginLeft: 2 }}>+{ts.bags}B</span> : null}
+              </span>
             ))}
           </div>
           <button onClick={() => setShowScore(s => !s)} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: showScore ? '#f5c842' : 'rgba(200,230,200,0.5)', background: showScore ? 'rgba(245,200,66,0.12)' : 'rgba(255,255,255,0.05)', border: `1px solid ${showScore ? 'rgba(245,200,66,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -462,14 +539,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
                 </div>
               )}
 
-              {/* Dealing animation (on top of table) */}
-              {showDealing && (
-                <DealingAnimation
-                  dealer={state.players[state.dealerIndex]}
-                  round={state.round}
-                  onDone={() => setShowDealing(false)}
-                />
-              )}
+              {/* Dealer splash rendered at full-screen level below */}
             </div>
 
             {/* Bidding overlay (outside table, full area) */}

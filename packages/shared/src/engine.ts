@@ -54,24 +54,23 @@ export function assignTeams(players: Player[], mode: TeamMode, playerCount: numb
   }));
 }
 
-// ── Bidding order ─────────────────────────────────────────────────────────────
+// ── Bidding order (clockwise from left of dealer) ─────────────────────────────
 //
-// Individual:  clockwise from left of dealer
-//   A(dealer) → B bids → C → D → E → A
+// Dealer index D, N players, seats 0..N-1
 //
-// Team mode:   clockwise from left of dealer, player by player
-//   A(dealer), teams AC vs BD:
-//   → B bids → C bids → D bids → A bids   (left-of-dealer team first overall)
+// DEAL:    Cards dealt clockwise starting from seat D+1
+// BID:     Clockwise from D+1  →  D+2  →  …  →  D  (dealer bids last)
+// LEAD:    First trick led by D+1 (same player who bid first)
 //
-// First LEAD (after bidding): always left of dealer clockwise
-//   → same player who bid first leads the first trick
+// 2-player example: A=seat0 deals, B=seat1 bids, A bids, B leads first trick
+// 5-player example: A=dealer, B bids, C bids, D bids, E bids, A bids, B leads
 
-function firstBidderIndex(dealerIndex: number, n: number): number {
+function firstBidder(dealerIndex: number, n: number): number {
   return nextSeat(dealerIndex, n);
 }
 
 // ── Deal ──────────────────────────────────────────────────────────────────────
-// Round N → N cards per player, dealt one at a time clockwise from left of dealer
+// Round N → N cards per player, dealt one at a time clockwise
 
 export function dealCards(state: GameState): GameState {
   const n = state.players.length;
@@ -98,22 +97,21 @@ export function dealCards(state: GameState): GameState {
     completedTricks: [],
     spadesBroken: false,
     lastTrickCards: {},
-    currentPlayerIndex: firstBidderIndex(state.dealerIndex, n),
+    currentPlayerIndex: firstBidder(state.dealerIndex, n),
   };
 }
 
 // ── Bidding ───────────────────────────────────────────────────────────────────
+// No nil, no blind nil. Only numeric bids 0..round.
 
 export function isValidBid(state: GameState, playerId: string, bid: BidValue): boolean {
   if (state.phase !== 'bidding') return false;
   const idx = state.players.findIndex(p => p.id === playerId);
   if (idx !== state.currentPlayerIndex) return false;
-  // No blind nil — removed entirely
-  if ((bid as any) === 'blind_nil') return false;
-  // Nil only allowed when holding 2+ cards (round 2+)
-  if (bid === 'nil' && state.round < 2) return false;
+  // Only numeric bids
+  if (typeof bid !== 'number') return false;
   // Cannot bid more tricks than cards in hand
-  if (typeof bid === 'number' && bid > state.round) return false;
+  if (bid < 0 || bid > state.round) return false;
   return true;
 }
 
@@ -123,12 +121,13 @@ export function placeBid(state: GameState, playerId: string, bid: BidValue): Gam
   const allBid = state.players.every(p => newBids[p.id] !== null);
 
   if (allBid) {
-    // First lead = left of dealer (clockwise), same as first bidder
+    // Play (first trick lead) starts from the DEALER
+    // e.g. A deals → B bids → A bids → A leads first trick
     return {
       ...state,
       bids: newBids,
       phase: 'playing',
-      currentPlayerIndex: firstBidderIndex(state.dealerIndex, n),
+      currentPlayerIndex: state.dealerIndex,
     };
   }
 
@@ -181,7 +180,6 @@ export function playCard(state: GameState, playerId: string, cardId: string): Ga
   const spadesBroken = state.spadesBroken || card.suit === 'spades';
   const n = state.players.length;
 
-  // Trick still in progress
   if (newTrick.length < n) {
     return {
       ...state, hands: newHands, currentTrick: newTrick, spadesBroken,
@@ -189,7 +187,7 @@ export function playCard(state: GameState, playerId: string, cardId: string): Ga
     };
   }
 
-  // Trick complete — record played cards per player, find winner
+  // Trick complete
   const lastTrickCards: Record<string, Card> = {};
   newTrick.forEach(tc => { lastTrickCards[tc.playerId] = tc.card; });
 
@@ -208,7 +206,6 @@ export function playCard(state: GameState, playerId: string, cardId: string): Ga
     });
   }
 
-  // Winner leads next trick
   return {
     ...state, hands: newHands, currentTrick: [], completedTricks,
     spadesBroken, currentPlayerIndex: winnerIndex, lastTrickCards,
@@ -216,12 +213,17 @@ export function playCard(state: GameState, playerId: string, cardId: string): Ga
 }
 
 // ── Scoring ───────────────────────────────────────────────────────────────────
-// Make bid:    +10 × bid
-// Miss bid:    -10 × bid
-// Each bag:    +1 pt
-// 3 bags:      -30 pts, bags reset mod 3
-// Nil:         ±50 pts
-// Game ends after round 13
+//
+// Each round:
+//   Make bid  →  score += bid × 10
+//   Miss bid  →  score -= bid × 10
+//   Overtricks → accumulated as bags (NOT added to score mid-game)
+//
+// After round 13 (game over):
+//   Final score = accumulated score + (bags × 1) — bags add 1pt each at the END
+//   (displayed as "score + Nb" during the game so players can track)
+//
+// No nil, no blind nil, no mid-game bag penalty.
 
 export function calculateRoundScore(state: GameState): GameState {
   const teamCount = getTeamCount(state.config.teamMode, state.players.length, state.config.numTeams);
@@ -235,31 +237,22 @@ export function calculateRoundScore(state: GameState): GameState {
 
   for (let ti = 0; ti < teamCount; ti++) {
     const members = state.players.filter(p => p.teamIndex === ti);
-    let teamBid = 0, teamTricks = 0, delta = 0;
+    let teamBid = 0, teamTricks = 0;
 
     for (const p of members) {
-      const bid = state.bids[p.id];
-      const tricks = tricksWon[p.id] || 0;
-      if (bid === 'nil') {
-        delta += tricks === 0 ? 50 : -50;
-        if (tricks > 0) teamTricks += tricks; // failed nil tricks become bags
-      } else {
-        teamBid += (bid as number) || 0;
-        teamTricks += tricks;
-      }
+      teamBid += (state.bids[p.id] as number) || 0;
+      teamTricks += tricksWon[p.id] || 0;
     }
 
+    let delta = 0;
     if (teamTricks >= teamBid) {
+      // Made the bid
+      delta = teamBid * 10;
       const bags = teamTricks - teamBid;
-      delta += teamBid * 10 + bags;
-      newTeamScores[ti].bags += bags;
-      const penalties = Math.floor(newTeamScores[ti].bags / 3);
-      if (penalties > 0) {
-        delta -= penalties * 30;
-        newTeamScores[ti].bags %= 3;
-      }
+      newTeamScores[ti].bags += bags;  // accumulate bags — no penalty until end
     } else {
-      delta -= teamBid * 10;
+      // Missed the bid
+      delta = -(teamBid * 10);
     }
 
     newTeamScores[ti].bids = teamBid;
@@ -269,6 +262,14 @@ export function calculateRoundScore(state: GameState): GameState {
   }
 
   const isGameOver = state.round >= TOTAL_ROUNDS;
+
+  // At game end: add bag points (1pt per bag) to final score for ranking
+  if (isGameOver) {
+    newTeamScores.forEach(ts => {
+      ts.score += ts.bags; // bags cash in as 1pt each at the very end
+    });
+  }
+
   let winner: number | null = null;
   if (isGameOver) {
     let best = -Infinity;

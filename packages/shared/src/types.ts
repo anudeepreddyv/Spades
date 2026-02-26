@@ -7,7 +7,7 @@ export interface Card {
   id: string;
 }
 
-export type BidValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 'nil';
+export type BidValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
 
 export type TeamMode =
   | 'individual'          // everyone for themselves
@@ -37,18 +37,17 @@ export type GamePhase = 'waiting' | 'dealing' | 'bidding' | 'playing' | 'scoring
 
 // One score entry per team (or per player in individual mode)
 export interface TeamScore {
-  score: number;
-  bags: number;
-  bids: number;   // bid this round
-  tricks: number; // tricks won this round
-  roundScores: number[]; // per-round score history
+  score: number;       // base score (bids only, no bags counted here)
+  bags: number;        // total accumulated bags across all rounds
+  bids: number;        // bid this round
+  tricks: number;      // tricks won this round
+  roundScores: number[]; // per-round base score delta (no bag penalties mid-game)
 }
 
 export interface GameConfig {
   playerCount: number;       // any number >= 2
   teamMode: TeamMode;
   numTeams?: number;         // explicit team count (overrides teamMode default)
-  allowNil: boolean;
   // No targetScore — fixed 13 rounds
 }
 
