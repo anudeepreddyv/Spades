@@ -4,16 +4,21 @@ export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 
 export interface Card {
   suit: Suit;
   rank: Rank;
-  id: string; // e.g. "A-spades"
+  id: string;
 }
 
 export type BidValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 'nil' | 'blind_nil';
 
+export type TeamMode =
+  | 'individual'          // everyone for themselves
+  | 'two_teams'           // 2 equal teams
+  | 'three_teams';        // 3 teams of 2 (6-player only)
+
 export interface Player {
   id: string;
   name: string;
-  teamIndex: number; // 0 or 1
-  seatIndex: number; // 0-3
+  teamIndex: number;  // in individual mode, each player is their own team (0,1,2,...)
+  seatIndex: number;
   connected: boolean;
 }
 
@@ -30,19 +35,22 @@ export interface Trick {
 
 export type GamePhase = 'waiting' | 'bidding' | 'playing' | 'scoring' | 'finished';
 
+// One score entry per team (or per player in individual mode)
 export interface TeamScore {
   score: number;
   bags: number;
-  bids: number;
-  tricks: number;
+  bids: number;   // bid this round
+  tricks: number; // tricks won this round
+  roundScores: number[]; // per-round score history
 }
 
 export interface GameConfig {
-  deckCount: 1 | 2;
-  targetScore: number;
+  playerCount: number;       // any number >= 2
+  teamMode: TeamMode;
+  numTeams?: number;         // explicit team count (overrides teamMode default)
   allowNil: boolean;
   allowBlindNil: boolean;
-  playerCount: 2 | 4 | 6;
+  // No targetScore — fixed 13 rounds
 }
 
 export interface GameState {
@@ -50,31 +58,27 @@ export interface GameState {
   phase: GamePhase;
   config: GameConfig;
   players: Player[];
-  // Hands are private - server sends each player only their own hand
   hands: Record<string, Card[]>;
   bids: Record<string, BidValue | null>;
   currentTrick: TrickCard[];
   completedTricks: Trick[];
-  teamScores: [TeamScore, TeamScore];
+  // One entry per team (or per player in individual)
+  teamScores: TeamScore[];
   currentPlayerIndex: number;
   spadesBroken: boolean;
-  round: number;
+  round: number;        // 1–13: round N deals N cards per player
   dealerIndex: number;
-  winner: number | null; // team index
+  winner: number | null; // winning teamIndex
 }
 
-// What gets sent to each client (hands are masked)
 export interface PublicGameState extends Omit<GameState, 'hands'> {
   myHand: Card[];
   myPlayerId: string;
 }
 
-// Socket event payloads
 export interface ServerToClientEvents {
   game_state: (state: PublicGameState) => void;
-  room_players: (players: Player[]) => void;
   error: (msg: string) => void;
-  room_created: (roomId: string) => void;
   joined_room: (roomId: string, playerId: string) => void;
 }
 

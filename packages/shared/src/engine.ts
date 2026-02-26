@@ -1,38 +1,68 @@
-import { Card, Suit, Rank, GameState, GameConfig, Player, TrickCard, Trick, BidValue, TeamScore } from './types';
+import { Card, Suit, Rank, GameState, GameConfig, Player, TrickCard, Trick, BidValue, TeamScore, TeamMode } from './types';
 
 const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
 const RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 const RANK_VALUES: Record<Rank, number> = {
   '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8,
-  '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+  '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14,
 };
 
-export function createDeck(count: 1 | 2 = 1): Card[] {
+// Total rounds is always 13
+export const TOTAL_ROUNDS = 13;
+
+// ── Deck ──────────────────────────────────────────────────────────────────────
+
+export function createDeck(): Card[] {
   const deck: Card[] = [];
-  for (let d = 0; d < count; d++) {
-    for (const suit of SUITS) {
-      for (const rank of RANKS) {
-        deck.push({ suit, rank, id: `${rank}-${suit}${count === 2 ? `-${d}` : ''}` });
-      }
-    }
-  }
+  for (const suit of SUITS)
+    for (const rank of RANKS)
+      deck.push({ suit, rank, id: `${rank}-${suit}` });
   return deck;
 }
 
 export function shuffleDeck(deck: Card[]): Card[] {
-  const shuffled = [...deck];
-  for (let i = shuffled.length - 1; i > 0; i--) {
+  const d = [...deck];
+  for (let i = d.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    [d[i], d[j]] = [d[j], d[i]];
   }
-  return shuffled;
+  return d;
 }
 
-export function dealCards(state: GameState): GameState {
-  const deck = shuffleDeck(createDeck(state.config.deckCount));
-  const hands: Record<string, Card[]> = {};
-  const cardsPerPlayer = Math.floor(deck.length / state.players.length);
+// ── Team assignment ───────────────────────────────────────────────────────────
 
+export function assignTeams(players: Player[], mode: TeamMode, playerCount: number, numTeams?: number): Player[] {
+  const teamCount = getTeamCount(mode, playerCount, numTeams);
+  return players.map((p, i) => {
+    const teamIndex = mode === 'individual' ? i : i % teamCount;
+    return { ...p, teamIndex };
+  });
+}
+
+export function getTeamCount(mode: TeamMode, playerCount: number, numTeams?: number): number {
+  if (mode === 'individual') return playerCount;
+  if (numTeams && numTeams > 0) return numTeams;
+  if (mode === 'two_teams') return 2;
+  return 3;
+}
+
+function makeTeamScores(count: number): TeamScore[] {
+  return Array.from({ length: count }, () => ({
+    score: 0, bags: 0, bids: 0, tricks: 0, roundScores: [],
+  }));
+}
+
+// ── Deal ──────────────────────────────────────────────────────────────────────
+// Round N → deal N cards to each player
+
+export function dealCards(state: GameState): GameState {
+  const cardsPerPlayer = state.round; // round 1 = 1 card, round 13 = 13 cards
+  const needed = cardsPerPlayer * state.players.length;
+  const fullDeck = shuffleDeck(createDeck());
+  // Use only as many cards as needed (from top of shuffled deck)
+  const deck = fullDeck.slice(0, needed);
+
+  const hands: Record<string, Card[]> = {};
   state.players.forEach((p, i) => {
     hands[p.id] = deck.slice(i * cardsPerPlayer, (i + 1) * cardsPerPlayer);
   });
@@ -49,12 +79,16 @@ export function dealCards(state: GameState): GameState {
   };
 }
 
+// ── Bidding ───────────────────────────────────────────────────────────────────
+
 export function isValidBid(state: GameState, playerId: string, bid: BidValue): boolean {
   if (state.phase !== 'bidding') return false;
   const playerIndex = state.players.findIndex(p => p.id === playerId);
   if (playerIndex !== state.currentPlayerIndex) return false;
   if (bid === 'blind_nil' && !state.config.allowBlindNil) return false;
   if (bid === 'nil' && !state.config.allowNil) return false;
+  // In round 1 (1 card each), nil/blind_nil don't make sense — block them
+  if (state.round === 1 && (bid === 'nil' || bid === 'blind_nil')) return false;
   return true;
 }
 
@@ -62,10 +96,7 @@ export function placeBid(state: GameState, playerId: string, bid: BidValue): Gam
   const newBids = { ...state.bids, [playerId]: bid };
   const allBid = state.players.every(p => newBids[p.id] !== null);
 
-  let nextIndex = (state.currentPlayerIndex + 1) % state.players.length;
-
   if (allBid) {
-    // Move to playing, first player after dealer leads
     return {
       ...state,
       bids: newBids,
@@ -74,20 +105,24 @@ export function placeBid(state: GameState, playerId: string, bid: BidValue): Gam
     };
   }
 
-  return { ...state, bids: newBids, currentPlayerIndex: nextIndex };
+  return {
+    ...state,
+    bids: newBids,
+    currentPlayerIndex: (state.currentPlayerIndex + 1) % state.players.length,
+  };
 }
+
+// ── Playing ───────────────────────────────────────────────────────────────────
 
 export function getPlayableCards(state: GameState, playerId: string): Card[] {
   const hand = state.hands[playerId] || [];
   if (state.currentTrick.length === 0) {
-    // Leading: can't lead spades unless broken or only spades left
     if (!state.spadesBroken) {
       const nonSpades = hand.filter(c => c.suit !== 'spades');
       return nonSpades.length > 0 ? nonSpades : hand;
     }
     return hand;
   }
-
   const leadSuit = state.currentTrick[0].card.suit;
   const followSuit = hand.filter(c => c.suit === leadSuit);
   return followSuit.length > 0 ? followSuit : hand;
@@ -97,18 +132,16 @@ export function isValidPlay(state: GameState, playerId: string, cardId: string):
   if (state.phase !== 'playing') return false;
   const playerIndex = state.players.findIndex(p => p.id === playerId);
   if (playerIndex !== state.currentPlayerIndex) return false;
-  const playable = getPlayableCards(state, playerId);
-  return playable.some(c => c.id === cardId);
+  return getPlayableCards(state, playerId).some(c => c.id === cardId);
 }
 
-function determineTrickWinner(trick: TrickCard[], leadSuit: Suit): string {
+function determineTrickWinner(trick: TrickCard[]): string {
   let winner = trick[0];
   for (const tc of trick.slice(1)) {
-    const wCard = winner.card;
-    const cCard = tc.card;
-    if (cCard.suit === 'spades' && wCard.suit !== 'spades') {
+    const w = winner.card, c = tc.card;
+    if (c.suit === 'spades' && w.suit !== 'spades') {
       winner = tc;
-    } else if (cCard.suit === wCard.suit && RANK_VALUES[cCard.rank] > RANK_VALUES[wCard.rank]) {
+    } else if (c.suit === w.suit && RANK_VALUES[c.rank] > RANK_VALUES[w.rank]) {
       winner = tc;
     }
   }
@@ -117,137 +150,117 @@ function determineTrickWinner(trick: TrickCard[], leadSuit: Suit): string {
 
 export function playCard(state: GameState, playerId: string, cardId: string): GameState {
   const card = state.hands[playerId].find(c => c.id === cardId)!;
-  const newHand = state.hands[playerId].filter(c => c.id !== cardId);
-  const newHands = { ...state.hands, [playerId]: newHand };
+  const newHands = { ...state.hands, [playerId]: state.hands[playerId].filter(c => c.id !== cardId) };
   const newTrick: TrickCard[] = [...state.currentTrick, { playerId, card }];
   const spadesBroken = state.spadesBroken || card.suit === 'spades';
 
-  // Trick not complete yet
   if (newTrick.length < state.players.length) {
     return {
-      ...state,
-      hands: newHands,
-      currentTrick: newTrick,
-      spadesBroken,
+      ...state, hands: newHands, currentTrick: newTrick, spadesBroken,
       currentPlayerIndex: (state.currentPlayerIndex + 1) % state.players.length,
     };
   }
 
-  // Trick complete - determine winner
-  const leadSuit = newTrick[0].card.suit;
-  const winnerId = determineTrickWinner(newTrick, leadSuit);
+  // Trick complete
+  const winnerId = determineTrickWinner(newTrick);
   const winnerIndex = state.players.findIndex(p => p.id === winnerId);
-
-  const completedTrick: Trick = {
-    cards: newTrick,
-    winnerId,
-    leadSuit,
-  };
-
-  const newCompletedTricks = [...state.completedTricks, completedTrick];
-
-  // Check if round over (all cards played)
+  const completedTricks = [...state.completedTricks, { cards: newTrick, winnerId, leadSuit: newTrick[0].card.suit }];
   const allHandsEmpty = Object.values(newHands).every(h => h.length === 0);
 
   if (allHandsEmpty) {
-    return calculateRoundScore({
-      ...state,
-      hands: newHands,
-      currentTrick: [],
-      completedTricks: newCompletedTricks,
-      spadesBroken,
-      phase: 'scoring',
-    });
+    return calculateRoundScore({ ...state, hands: newHands, currentTrick: [], completedTricks, spadesBroken, phase: 'scoring' });
   }
 
-  return {
-    ...state,
-    hands: newHands,
-    currentTrick: [],
-    completedTricks: newCompletedTricks,
-    spadesBroken,
-    currentPlayerIndex: winnerIndex,
-  };
+  return { ...state, hands: newHands, currentTrick: [], completedTricks, spadesBroken, currentPlayerIndex: winnerIndex };
 }
 
+// ── Scoring ───────────────────────────────────────────────────────────────────
+// Rules:
+//   - Each unit bid = 10 pts if made, -10 pts if missed
+//   - Overtricks = bags: +1 pt each
+//   - Every 3 bags accumulated = -30 pts penalty (bags reset by 3)
+//   - Nil = ±50 pts (blind nil = ±100)
+//   - After round 13 → game over, highest score wins
+
 export function calculateRoundScore(state: GameState): GameState {
-  // Count tricks per player
+  const teamCount = getTeamCount(state.config.teamMode, state.players.length);
+
+  // Count tricks won per player
   const tricksWon: Record<string, number> = Object.fromEntries(state.players.map(p => [p.id, 0]));
   for (const trick of state.completedTricks) {
     if (trick.winnerId) tricksWon[trick.winnerId]++;
   }
 
-  const newTeamScores: [TeamScore, TeamScore] = [
-    { ...state.teamScores[0] },
-    { ...state.teamScores[1] },
-  ];
+  const newTeamScores: TeamScore[] = state.teamScores.map(ts => ({ ...ts, roundScores: [...ts.roundScores] }));
 
-  // Calculate per-team
-  for (let teamIdx = 0; teamIdx < 2; teamIdx++) {
+  for (let teamIdx = 0; teamIdx < teamCount; teamIdx++) {
     const teamPlayers = state.players.filter(p => p.teamIndex === teamIdx);
     let teamBid = 0;
     let teamTricks = 0;
-    let nilBonus = 0;
+    let roundDelta = 0;
 
     for (const player of teamPlayers) {
       const bid = state.bids[player.id];
-      const tricks = tricksWon[player.id];
+      const tricks = tricksWon[player.id] || 0;
 
       if (bid === 'nil' || bid === 'blind_nil') {
-        const nilValue = bid === 'blind_nil' ? 200 : 100;
-        if (tricks === 0) {
-          nilBonus += nilValue;
-        } else {
-          nilBonus -= nilValue;
-          teamTricks += tricks;
-        }
+        const nilValue = bid === 'blind_nil' ? 100 : 50;
+        roundDelta += tricks === 0 ? nilValue : -nilValue;
+        if (tricks > 0) teamTricks += tricks; // failed nil tricks count as bags
       } else {
         teamBid += (bid as number) || 0;
         teamTricks += tricks;
       }
     }
 
-    newTeamScores[teamIdx].bids = teamBid;
-    newTeamScores[teamIdx].tricks = teamTricks;
-
     if (teamTricks >= teamBid) {
       const overtricks = teamTricks - teamBid;
-      newTeamScores[teamIdx].score += teamBid * 10 + overtricks + nilBonus;
+      roundDelta += teamBid * 10 + overtricks; // each overtrick = 1 bag point
       newTeamScores[teamIdx].bags += overtricks;
-      // Bag penalty
-      if (newTeamScores[teamIdx].bags >= 10) {
-        newTeamScores[teamIdx].score -= 100;
-        newTeamScores[teamIdx].bags -= 10;
+
+      // Every 3 bags = -30 penalty, consume those bags
+      const bagPenalties = Math.floor(newTeamScores[teamIdx].bags / 3);
+      if (bagPenalties > 0) {
+        roundDelta -= bagPenalties * 30;
+        newTeamScores[teamIdx].bags = newTeamScores[teamIdx].bags % 3;
       }
     } else {
-      newTeamScores[teamIdx].score -= teamBid * 10;
-      newTeamScores[teamIdx].score += nilBonus;
+      // Missed bid
+      roundDelta -= teamBid * 10;
     }
+
+    newTeamScores[teamIdx].bids = teamBid;
+    newTeamScores[teamIdx].tricks = teamTricks;
+    newTeamScores[teamIdx].score += roundDelta;
+    newTeamScores[teamIdx].roundScores.push(roundDelta);
   }
 
-  // Check for winner
+  // After round 13, game is finished
+  const isGameOver = state.round >= TOTAL_ROUNDS;
   let winner: number | null = null;
-  for (let i = 0; i < 2; i++) {
-    if (newTeamScores[i].score >= state.config.targetScore) {
-      // Pick highest score
-      winner = newTeamScores[0].score > newTeamScores[1].score ? 0 : 1;
-    }
+  if (isGameOver) {
+    let maxScore = -Infinity;
+    newTeamScores.forEach((ts, i) => {
+      if (ts.score > maxScore) { maxScore = ts.score; winner = i; }
+    });
   }
 
   return {
     ...state,
     teamScores: newTeamScores,
-    phase: winner !== null ? 'finished' : 'scoring',
+    phase: isGameOver ? 'finished' : 'scoring',
     winner,
   };
 }
 
+// ── Next round ────────────────────────────────────────────────────────────────
+
 export function startNextRound(state: GameState): GameState {
-  const newDealerIndex = (state.dealerIndex + 1) % state.players.length;
+  if (state.round >= TOTAL_ROUNDS) return state; // safety guard
   const freshState: GameState = {
     ...state,
     round: state.round + 1,
-    dealerIndex: newDealerIndex,
+    dealerIndex: (state.dealerIndex + 1) % state.players.length,
     completedTricks: [],
     currentTrick: [],
     bids: {},
@@ -259,7 +272,10 @@ export function startNextRound(state: GameState): GameState {
   return dealCards(freshState);
 }
 
-export function createInitialState(id: string, config: GameConfig): GameState {
+// ── Initial state ─────────────────────────────────────────────────────────────
+
+export function createInitialState(id: string, config: GameConfig, playerCount: number): GameState {
+  const teamCount = getTeamCount(config.teamMode, playerCount);
   return {
     id,
     phase: 'waiting',
@@ -269,10 +285,7 @@ export function createInitialState(id: string, config: GameConfig): GameState {
     bids: {},
     currentTrick: [],
     completedTricks: [],
-    teamScores: [
-      { score: 0, bags: 0, bids: 0, tricks: 0 },
-      { score: 0, bags: 0, bids: 0, tricks: 0 },
-    ],
+    teamScores: makeTeamScores(teamCount),
     currentPlayerIndex: 0,
     spadesBroken: false,
     round: 1,

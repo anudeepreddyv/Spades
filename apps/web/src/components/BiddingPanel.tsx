@@ -23,6 +23,7 @@ const C = {
 export function BiddingPanel({ state, onBid }: BiddingPanelProps) {
   const [hovered, setHovered] = useState<string | null>(null);
   const isMyTurn = state.players[state.currentPlayerIndex]?.id === state.myPlayerId;
+  const maxBid = state.round; // can only bid up to cards in hand
   const myBid = state.bids[state.myPlayerId];
   const currentBidder = state.players[state.currentPlayerIndex];
 
@@ -70,7 +71,9 @@ export function BiddingPanel({ state, onBid }: BiddingPanelProps) {
         textAlign: 'center',
         margin: '0 0 4px',
       }}>
-        {isMyTurn ? 'Place Your Bid' : 'Bidding Phase'}
+        {isMyTurn ? 'Place Your Bid' : 'Bidding Phase'}</h3>
+      <div style={{ textAlign: 'center', color: 'rgba(245,200,66,0.6)', fontSize: 11, marginBottom: 4, fontFamily: "'DM Sans', sans-serif" }}>Round {state.round} of 13 · {state.round} card{state.round !== 1 ? 's' : ''} dealt</div>
+      <h3 style={{ display: 'none' }}
       </h3>
 
       {/* Subtitle */}
@@ -101,7 +104,7 @@ export function BiddingPanel({ state, onBid }: BiddingPanelProps) {
       {isMyTurn && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 10 }}>
-            {[0,1,2,3,4,5,6,7,8,9,10,11,12,13].map(n => numBtn(n))}
+            {Array.from({ length: maxBid + 1 }, (_, n) => n).map(n => numBtn(n))}
           </div>
 
           {state.config.allowNil && (
