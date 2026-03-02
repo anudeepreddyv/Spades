@@ -470,9 +470,22 @@ useEffect(() => {
             </div>
 
             {/* Bidding overlay */}
-            {state.phase === 'bidding' && !showDealing && !cpuBidToast && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5,18,10,0.85)', zIndex: 20, padding: isMobile ? 6 : 16, overflowY: 'auto' }}>
-                <BiddingPanel state={state} onBid={onBid} />
+            {state.phase === 'playing' && Object.keys(displayCardMap).length === 0 && (
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 2 }}>
+                <div style={{
+                  color: isMyTurn ? '#f5c842' : 'rgba(180,230,180,0.9)',
+                  fontSize: isMobile ? 14 : 18,
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                  background: 'rgba(0,0,0,0.35)',
+                  padding: isMobile ? '6px 14px' : '8px 20px',
+                  borderRadius: 10,
+                  border: `1px solid ${isMyTurn ? 'rgba(245,200,66,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {isMyTurn ? '✨ Play a card' : `⏳ ${state.players[state.currentPlayerIndex]?.name}'s turn`}
+                </div>
               </div>
             )}
 
