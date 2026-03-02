@@ -105,17 +105,18 @@ function ReactionBubble({ emoji, compact }: { emoji: string; compact: boolean })
   return (
     <div style={{
       position: 'absolute',
-      top: compact ? -28 : -36,
+      top: compact ? -38 : -52,
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 50,
-      animation: 'reactionPop 0.3s cubic-bezier(0.175,0.885,0.32,1.275) forwards',
+      animation: 'reactionPop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards',
       pointerEvents: 'none',
     }}>
       <div style={{
-        fontSize: compact ? 22 : 28,
-        filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))',
+        fontSize: compact ? 30 : 48,
+        filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.6))',
         lineHeight: 1,
+        animation: 'reactionFloat 1.5s ease-in-out 0.5s infinite',
       }}>{emoji}</div>
     </div>
   );
@@ -391,7 +392,20 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
         @keyframes handDeal { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes myTurnPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
         @keyframes toastIn { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
-        @keyframes reactionPop { 0%{transform:translateX(-50%) scale(0);opacity:0} 60%{transform:translateX(-50%) scale(1.2);opacity:1} 100%{transform:translateX(-50%) scale(1);opacity:1} }
+        @keyframes reactionPop {
+          0% { transform: translateX(-50%) scale(0) translateY(10px); opacity: 0; }
+          30% { transform: translateX(-50%) scale(1.35) translateY(-8px); opacity: 1; }
+          50% { transform: translateX(-50%) scale(0.9) translateY(-4px); opacity: 1; }
+          65% { transform: translateX(-50%) scale(1.12) translateY(-6px); opacity: 1; }
+          80% { transform: translateX(-50%) scale(0.97) translateY(-5px); opacity: 1; }
+          100% { transform: translateX(-50%) scale(1) translateY(-5px); opacity: 1; }
+        }
+        @keyframes reactionFloat {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          25% { transform: translateY(-3px) rotate(5deg); }
+          50% { transform: translateY(-1px) rotate(0deg); }
+          75% { transform: translateY(-3px) rotate(-5deg); }
+        }
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         button { touch-action: manipulation; }
       `}</style>
@@ -591,17 +605,18 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
             {reactions[state.myPlayerId] && (
               <div style={{
                 position: 'absolute',
-                bottom: isMobile ? 6 : 10,
+                bottom: isMobile ? 10 : 16,
                 left: '50%',
                 transform: 'translateX(-50%)',
                 zIndex: 35,
-                animation: 'reactionPop 0.3s cubic-bezier(0.175,0.885,0.32,1.275) forwards',
+                animation: 'reactionPop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards',
                 pointerEvents: 'none',
               }}>
                 <div style={{
-                  fontSize: isMobile ? 28 : 34,
-                  filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))',
+                  fontSize: isMobile ? 36 : 56,
+                  filter: 'drop-shadow(0 4px 14px rgba(0,0,0,0.6))',
                   lineHeight: 1,
+                  animation: 'reactionFloat 1.5s ease-in-out 0.5s infinite',
                 }}>{reactions[state.myPlayerId].emoji}</div>
               </div>
             )}
