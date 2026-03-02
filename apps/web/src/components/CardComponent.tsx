@@ -12,10 +12,10 @@ const SUIT_COLORS: Record<string, string> = {
 // All sizes now scale via CSS clamp so they adapt to any viewport.
 // The 'hand' size uses viewport-relative units to stay visible on small phones.
 const SIZES = {
-  sm:   { width: 44,  height: 62,  rankSize: 11, suitSize: 18, pad: 3  },
-  md:   { width: 54,  height: 78,  rankSize: 13, suitSize: 22, pad: 4  },
-  lg:   { width: 68,  height: 100, rankSize: 15, suitSize: 28, pad: 6  },
-  hand: { width: 62,  height: 90,  rankSize: 14, suitSize: 26, pad: 5  },
+  sm: { width: 44, height: 68, rankSize: 11, suitSize: 18, pad: 3 },
+  md: { width: 54, height: 78, rankSize: 13, suitSize: 22, pad: 4 },
+  lg: { width: 68, height: 100, rankSize: 15, suitSize: 28, pad: 6 },
+  hand: { width: 62, height: 90, rankSize: 14, suitSize: 26, pad: 5 },
 };
 
 interface CardProps {
@@ -57,7 +57,7 @@ export function CardComponent({ card, onClick, selected, disabled, size = 'md', 
     boxSizing: 'border-box',
     flexShrink: 0,
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
     WebkitTapHighlightColor: 'transparent',
   };
 

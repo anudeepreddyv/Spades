@@ -28,7 +28,8 @@ export function BiddingPanel({ state, onBid }: BiddingPanelProps) {
       padding: isMobile ? '14px 12px 12px' : '20px 22px 18px',
       boxShadow: '0 20px 60px rgba(0,0,0,0.88)',
       width: '100%',
-      maxWidth: isMobile ? '92vw' : 340,
+      maxWidth: isMobile ? '92vw' : 400,
+      overflow: 'hidden',
       boxSizing: 'border-box' as const,
     }}>
       <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: isMobile ? 16 : 19, fontWeight: 600, color: '#f5c842', textAlign: 'center', margin: `0 0 ${isMobile ? 2 : 3}px` }}>
