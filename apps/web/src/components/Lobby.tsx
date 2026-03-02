@@ -30,30 +30,28 @@ const C = {
 };
 
 // ── Dynamic team option generator ────────────────────────────────────────────
-// For any even N, generate all meaningful ways to split into equal teams.
-// Returns options from fewest teams (biggest teams) to most teams (individual).
+// For any N >= 2, find all ways to split into equal teams where:
+//   - each team has >= 2 players
+//   - number of teams >= 2
+// This covers even AND odd numbers (e.g. 9 → 3×3, 15 → 3×5 or 5×3, 21 → 3×7 or 7×3)
 function getTeamOptions(count: number): { value: string; numTeams: number; teamSize: number; label: string; desc: string }[] {
   if (count < 2) return [];
   const opts: { value: string; numTeams: number; teamSize: number; label: string; desc: string }[] = [];
 
-  if (count % 2 === 0) {
-    // Find all divisors of count that give equal teams (both parts >= 2)
-    for (let numTeams = 2; numTeams <= count / 2; numTeams++) {
-      if (count % numTeams === 0) {
-        const teamSize = count / numTeams;
+  // Try all possible numbers of teams from 2 up to count/2
+  // A valid split: count divisible by numTeams, and teamSize >= 2
+  for (let numTeams = 2; numTeams <= Math.floor(count / 2); numTeams++) {
+    if (count % numTeams === 0) {
+      const teamSize = count / numTeams;
+      if (teamSize >= 2) {
         const desc = Array.from({ length: numTeams }, () => teamSize).join(' vs ');
-        opts.push({
-          value: numTeams === 2 ? 'two_teams' : 'three_teams',
-          numTeams,
-          teamSize,
-          label: `${numTeams} Teams`,
-          desc,
-        });
+        const value = numTeams === 2 ? 'two_teams' : 'three_teams';
+        opts.push({ value, numTeams, teamSize, label: `${numTeams} Teams of ${teamSize}`, desc });
       }
     }
   }
 
-  // Always add individual
+  // Always include individual
   opts.push({
     value: 'individual',
     numTeams: count,
@@ -178,16 +176,16 @@ function RulesModal({ onClose }: { onClose: () => void }) {
           border: '1px solid rgba(245,200,66,0.18)', borderRadius: 10, padding: '14px 18px',
         }}>
           <div style={{ color: '#f5c842', fontSize: 11, fontFamily: "'DM Sans', sans-serif", letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 10 }}>Quick Reference</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
             {[
-              ['Make your bid', '+10 × bid'],
-              ['Miss your bid', '−10 × bid'],
-              ['Each overtrick', '+1 bag'],
-              ['Every 3 bags', '−30 pts (bags reset)'],
-            ].map(([rule, pts]) => (
-              <div key={rule} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              ['Make your bid', '+10 × bid', true],
+              ['Miss your bid', '−10 × bid', false],
+              ['Each overtrick', '+1 bag', true],
+              ['Every 3 bags', '−30 pts (bags reset)', false],
+            ].map(([rule, pts, isPositive]) => (
+              <div key={rule as string} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: 'rgba(200,225,200,0.65)' }}>{rule}</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: pts.startsWith('+') ? '#4ade80' : '#f87171' }}>{pts}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: isPositive ? '#4ade80' : '#f87171' }}>{pts}</span>
               </div>
             ))}
           </div>
@@ -222,17 +220,18 @@ export function Lobby({ onCreateRoom, onJoinRoom, error, connected }: LobbyProps
 
   const playerCount = parseInt(playerCountStr) || 0;
   const isValidCount = playerCount >= 2 && playerCount <= 52;
-  const isOdd = isValidCount && playerCount % 2 === 1;
   const teamOptions = isValidCount ? getTeamOptions(playerCount) : [];
+  const hasTeamOptions = teamOptions.filter(o => o.value !== 'individual').length > 0;
 
   const handlePlayerCountInput = (val: string) => {
-    // Only allow numbers
     const cleaned = val.replace(/\D/g, '');
     setPlayerCountStr(cleaned);
     const n = parseInt(cleaned) || 0;
     if (n >= 2) {
-      if (n % 2 === 1) setTeamMode('individual');
-      else setTeamMode('two_teams');
+      const opts = getTeamOptions(n);
+      const firstTeamOpt = opts.find(o => o.value !== 'individual');
+      // Default to first team option if available, else individual
+      setTeamMode(firstTeamOpt ? (firstTeamOpt.value as TeamMode) : 'individual');
     }
   };
 
@@ -371,7 +370,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, error, connected }: LobbyProps
                   <div style={{ marginTop: 7, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s', ...
                     !isValidCount
                       ? { background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.25)', color: '#f87171' }
-                      : isOdd
+                      : !hasTeamOptions
                         ? { background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', color: '#fbbf24' }
                         : { background: 'rgba(74,222,128,0.07)', border: '1px solid rgba(74,222,128,0.18)', color: '#86efac' }
                   }}>
@@ -379,16 +378,16 @@ export function Lobby({ onCreateRoom, onJoinRoom, error, connected }: LobbyProps
                       ? playerCount < 2
                         ? '⚠ Minimum 2 players required'
                         : '⚠ That\'s a lot! Maximum is 52 players'
-                      : isOdd
-                        ? `ℹ ${playerCount} players — odd number, so everyone plays individually`
+                      : !hasTeamOptions
+                        ? `ℹ ${playerCount} players — no equal team split possible, everyone plays individually`
                         : `✓ ${playerCount} players — choose a team format below`
                     }
                   </div>
                 )}
               </div>
 
-              {/* Team mode — only for valid even counts */}
-              {isValidCount && !isOdd && teamOptions.length > 0 && (
+              {/* Team mode — show when there are valid team splits */}
+              {isValidCount && teamOptions.length > 0 && (
                 <div>
                   <label style={labelStyle}>Game Mode</label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
