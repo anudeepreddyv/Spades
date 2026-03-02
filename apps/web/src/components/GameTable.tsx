@@ -478,6 +478,7 @@ useEffect(() => {
                   </div>
                 </div>
               )}
+            </div>
 
             {/* Bidding overlay */}
             {state.phase === 'bidding' && !showDealing && !cpuBidToast && (
