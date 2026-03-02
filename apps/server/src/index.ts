@@ -238,4 +238,6 @@ app.get('/rooms', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => console.log(`🃏 Spades server on port ${PORT}`));
+//httpServer.listen(PORT, () => console.log(`🃏 Spades server on port ${PORT}`));
+httpServer.listen(Number(PORT), '0.0.0.0', () => console.log(`🃏 Spades server on port ${PORT}`));
+
