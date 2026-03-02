@@ -462,12 +462,22 @@ useEffect(() => {
               })()}
               {state.phase === 'playing' && Object.keys(displayCardMap).length === 0 && (
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 2 }}>
-                  <div style={{ color: 'rgba(255,255,255,0.18)', fontSize: isMobile ? 10 : 13, fontStyle: 'italic', fontFamily: "'DM Sans', sans-serif" }}>
-                    {isMyTurn ? 'Play a card' : `${state.players[state.currentPlayerIndex]?.name}'s turn`}
+                  <div style={{
+                    color: isMyTurn ? 'rgba(245,200,66,0.9)' : 'rgba(200,240,200,0.75)',
+                    fontSize: isMobile ? 13 : 16,
+                    fontWeight: 600,
+                    fontFamily: "'DM Sans', sans-serif",
+                    textShadow: '0 1px 8px rgba(0,0,0,0.8)',
+                    background: 'rgba(0,0,0,0.35)',
+                    borderRadius: 8,
+                    padding: isMobile ? '6px 12px' : '8px 18px',
+                    border: `1px solid ${isMyTurn ? 'rgba(245,200,66,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {isMyTurn ? '✨ Your turn — play a card' : `⏳ ${state.players[state.currentPlayerIndex]?.name}'s turn`}
                   </div>
                 </div>
               )}
-            </div>
 
             {/* Bidding overlay */}
             {state.phase === 'bidding' && !showDealing && !cpuBidToast && (
@@ -491,7 +501,7 @@ useEffect(() => {
           </div>
 
           {/* ── My Hand ── */}
-          <div style={{ flexShrink: 0, paddingBottom: isMobile ? 4 : 8, paddingTop: isMobile ? 3 : 5, background: 'rgba(0,0,0,0.28)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ flexShrink: 0, paddingBottom: isMobile ? 4 : 8, paddingTop: isMobile ? 3 : 5, background: 'rgba(0,0,0,0.28)', borderTop: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden', position: 'relative' }}>
             <div style={{ textAlign: 'center', height: isMobile ? 14 : 16, marginBottom: isMobile ? 2 : 4 }}>
               <span style={{ fontSize: isMobile ? 11 : 13, fontFamily: "'DM Sans', sans-serif", color: isMyTurn && state.phase === 'playing' ? '#f5c842' : 'rgba(200,240,200,0.85)' }}>
                 {isMyTurn && state.phase === 'playing'
@@ -501,7 +511,21 @@ useEffect(() => {
                     : ''}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: isMobile ? 1 : 2, overflowX: 'auto', overflowY: 'visible', padding: `${isMobile ? 18 : 22}px ${isMobile ? 3 : 10}px ${isMobile ? 2 : 4}px`, minHeight: cardH + (isMobile ? 18 : 22), scrollbarWidth: 'none' }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-start',
+              alignItems: 'flex-end',
+              gap: isMobile ? 4 : 6,
+              overflowX: 'auto',
+              overflowY: 'visible',
+              padding: `${isMobile ? 18 : 22}px ${isMobile ? 10 : 16}px ${isMobile ? 4 : 8}px`,
+              minHeight: cardH + (isMobile ? 18 : 22),
+              // Hide scrollbar visually but keep it functional
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none' as any,
+              // Fade edges to hint scrollability
+              WebkitOverflowScrolling: 'touch' as any,
+            }}>
               {sortedHand.map((card, i) => {
                 const isDisabled = state.phase === 'playing' ? (isMyTurnServer ? !playableIds.has(card.id) : true) : false;
                 return (
