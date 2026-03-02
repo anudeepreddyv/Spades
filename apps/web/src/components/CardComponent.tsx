@@ -57,6 +57,7 @@ export function CardComponent({ card, onClick, selected, disabled, size = 'md', 
     boxSizing: 'border-box',
     flexShrink: 0,
     position: 'relative',
+    overflow: 'hidden',
     WebkitTapHighlightColor: 'transparent',
   };
 
@@ -68,8 +69,8 @@ export function CardComponent({ card, onClick, selected, disabled, size = 'md', 
     );
   }
 
-  const cornerStyle: React.CSSProperties = { color, fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, lineHeight: 1, fontSize: s.rankSize - 1 };
-  
+  const cornerStyle: React.CSSProperties = { color, fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, lineHeight: 1, fontSize: s.rankSize };
+
   return (
     <div style={baseStyle} onClick={isClickable ? onClick : undefined}
       onMouseEnter={e => { if (isClickable && !selected) { (e.currentTarget as HTMLElement).style.transform = 'translateY(-6px)'; } }}
