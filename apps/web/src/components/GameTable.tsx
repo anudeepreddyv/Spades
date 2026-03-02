@@ -251,7 +251,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
       const currBid = state.bids[player.id];
       if ((prevBid === null || prevBid === undefined) && currBid !== null && currBid !== undefined) {
         setCpuBidToast({ name: player.name, bid: currBid as number });
-        const t = setTimeout(() => setCpuBidToast(null), 3000);
+        const t = setTimeout(() => setCpuBidToast(null), 2000);
         prevBids.current = Object.fromEntries(state.players.map(p => [p.id, state.bids[p.id]]));
         return () => clearTimeout(t);
       }
@@ -358,8 +358,8 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
 
       {/* CPU Bid toast */}
       {cpuBidToast && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 190, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-          <div style={{ background: 'rgba(13,26,16,0.94)', border: '1px solid rgba(245,200,66,0.4)', borderRadius: 16, padding: isMobile ? '16px 24px' : '24px 40px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.8)', animation: 'toastIn 0.3s ease' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 190, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5,18,10,0.85)' }}>
+          <div style={{ background: '#0d1f10', border: '2px solid rgba(245,200,66,0.6)', borderRadius: 20, padding: isMobile ? '24px 36px' : '36px 60px', textAlign: 'center', boxShadow: '0 24px 80px rgba(0,0,0,0.9)', animation: 'toastIn 0.3s ease' }}>
             <div style={{ fontSize: isMobile ? 28 : 36, marginBottom: 6 }}>🤖</div>
             <div style={{ color: 'rgba(160,210,160,0.7)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, marginBottom: 4 }}>{cpuBidToast.name} bids</div>
             <div style={{ color: '#f5c842', fontFamily: "'JetBrains Mono', monospace", fontSize: isMobile ? 48 : 64, fontWeight: 900, lineHeight: 1 }}>{cpuBidToast.bid}</div>
@@ -459,7 +459,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
             </div>
 
             {/* Bidding overlay */}
-            {state.phase === 'bidding' && !showDealing && (
+            {state.phase === 'bidding' && !showDealing && !cpuBidToast && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5,18,10,0.85)', zIndex: 20, padding: isMobile ? 6 : 16, overflowY: 'auto' }}>
                 <BiddingPanel state={state} onBid={onBid} />
               </div>
