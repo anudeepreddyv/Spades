@@ -25,7 +25,7 @@ export function ScoreBoard({ state, onNextRound }: ScoreBoardProps) {
         background: '#0d1a10', borderRadius: 18,
         border: '1px solid rgba(255,255,255,0.09)',
         padding: '24px 28px', boxShadow: '0 24px 60px rgba(0,0,0,0.88)',
-        width: '100%', maxWidth: 440,
+        width: '100%', maxWidth: 'min(440px, 92vw)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <div style={{ fontSize: 44, marginBottom: 8 }}>{iAmWinner ? '🏆' : '👏'}</div>
@@ -111,7 +111,7 @@ export function ScoreBoard({ state, onNextRound }: ScoreBoardProps) {
       background: '#0d1a10', borderRadius: 16,
       border: '1px solid rgba(255,255,255,0.08)',
       padding: '22px 24px', boxShadow: '0 24px 60px rgba(0,0,0,0.88)',
-      width: '100%', maxWidth: 360,
+      width: '100%', maxWidth: 'min(360px, 92vw)',
     }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 18 }}>
