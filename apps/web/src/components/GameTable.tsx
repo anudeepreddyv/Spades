@@ -232,6 +232,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [showScore, setShowScore]       = useState(false);
   const [showDealing, setShowDealing]   = useState(false);
+  const [scoreVisible, setScoreVisible] = useState(false);
   const { w, h, isMobile, isTablet }    = useScreenSize();
 
   const [cpuBidToast, setCpuBidToast]   = useState<{ name: string; bid: number } | null>(null);
@@ -298,6 +299,16 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
     prevPhase.current = state.phase;
     prevRound.current = state.round;
   }, [state.phase, state.round]);
+
+  // Delay scoring overlay by 2.5s after last trick
+useEffect(() => {
+  if (state.phase === 'scoring' || state.phase === 'finished') {
+    const t = setTimeout(() => setScoreVisible(true), 2500);
+    return () => clearTimeout(t);
+  } else {
+    setScoreVisible(false);
+  }
+}, [state.phase]);
 
   const myPlayer   = state.players.find(p => p.id === state.myPlayerId)!;
   const opponents  = state.players.filter(p => p.id !== state.myPlayerId);
@@ -466,7 +477,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
             )}
 
             {/* Scoring overlay */}
-            {(state.phase === 'scoring' || state.phase === 'finished') && (
+            {(state.phase === 'scoring' || state.phase === 'finished') && scoreVisible && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5,18,10,0.86)', zIndex: 20, padding: isMobile ? 6 : 16, overflowY: 'auto' }}>
                 <ScoreBoard state={state} onNextRound={state.phase === 'scoring' ? onNextRound : undefined} />
               </div>
@@ -490,7 +501,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
                     : ''}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: isMobile ? 1 : 2, overflowX: 'auto', padding: `0 ${isMobile ? 3 : 10}px ${isMobile ? 2 : 4}px`, minHeight: cardH, scrollbarWidth: 'none' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: isMobile ? 1 : 2, overflowX: 'auto', overflowY: 'visible', padding: `${isMobile ? 18 : 22}px ${isMobile ? 3 : 10}px ${isMobile ? 2 : 4}px`, minHeight: cardH + (isMobile ? 18 : 22), scrollbarWidth: 'none' }}>
               {sortedHand.map((card, i) => {
                 const isDisabled = state.phase === 'playing' ? (isMyTurnServer ? !playableIds.has(card.id) : true) : false;
                 return (
