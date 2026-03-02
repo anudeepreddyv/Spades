@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { PublicGameState, BidValue, GameConfig } from '@spades/shared';
 import { getSocket } from '../lib/socket';
 
@@ -10,6 +10,8 @@ export interface GameSession {
   connected: boolean;
 }
 
+export type Reactions = Record<string, { emoji: string; name: string }>;
+
 export function useGame() {
   const [session, setSession] = useState<GameSession>({
     roomId: null,
@@ -18,6 +20,8 @@ export function useGame() {
     error: null,
     connected: false,
   });
+  const [reactions, setReactions] = useState<Reactions>({});
+  const reactionTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     const socket = getSocket();
@@ -26,7 +30,6 @@ export function useGame() {
     socket.on('disconnect', () => setSession(s => ({ ...s, connected: false })));
 
     socket.on('joined_room', (roomId: string, playerId: string) => {
-      // Persist for reconnection
       localStorage.setItem('spades_room', roomId);
       localStorage.setItem('spades_player', playerId);
       setSession(s => ({ ...s, roomId, playerId, error: null }));
@@ -38,6 +41,21 @@ export function useGame() {
 
     socket.on('error', (msg: string) => {
       setSession(s => ({ ...s, error: msg }));
+    });
+
+    socket.on('player_reaction', (playerId: string, playerName: string, emoji: string) => {
+      if (reactionTimers.current[playerId]) {
+        clearTimeout(reactionTimers.current[playerId]);
+      }
+      setReactions(prev => ({ ...prev, [playerId]: { emoji, name: playerName } }));
+      reactionTimers.current[playerId] = setTimeout(() => {
+        setReactions(prev => {
+          const next = { ...prev };
+          delete next[playerId];
+          return next;
+        });
+        delete reactionTimers.current[playerId];
+      }, 2500);
     });
 
     // Try to rejoin on load
@@ -53,6 +71,8 @@ export function useGame() {
       socket.off('joined_room');
       socket.off('game_state');
       socket.off('error');
+      socket.off('player_reaction');
+      Object.values(reactionTimers.current).forEach(clearTimeout);
     };
   }, []);
 
@@ -86,5 +106,9 @@ export function useGame() {
     setSession({ roomId: null, playerId: null, gameState: null, error: null, connected: true });
   }, []);
 
-  return { session, createRoom, joinRoom, startGame, placeBid, playCard, nextRound, leaveGame };
+  const sendReaction = useCallback((emoji: string) => {
+    getSocket().emit('reaction', emoji);
+  }, []);
+
+  return { session, reactions, createRoom, joinRoom, startGame, placeBid, playCard, nextRound, leaveGame, sendReaction };
 }

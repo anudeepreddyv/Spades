@@ -79,6 +79,7 @@ export interface ServerToClientEvents {
   game_state: (state: PublicGameState) => void;
   error: (msg: string) => void;
   joined_room: (roomId: string, playerId: string) => void;
+  player_reaction: (playerId: string, playerName: string, emoji: string) => void;
 }
 
 export interface ClientToServerEvents {
@@ -89,4 +90,5 @@ export interface ClientToServerEvents {
   place_bid: (bid: BidValue) => void;
   play_card: (cardId: string) => void;
   next_round: () => void;
+  reaction: (emoji: string) => void;
 }

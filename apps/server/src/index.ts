@@ -18,8 +18,8 @@ app.use(express.json());
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*', methods: ['GET', 'POST'] } });
 
-const rooms    = new Map<string, GameState>();
-const socketToRoom   = new Map<string, string>();
+const rooms = new Map<string, GameState>();
+const socketToRoom = new Map<string, string>();
 const socketToPlayer = new Map<string, string>();
 
 // Track which players are computers (by playerId)
@@ -212,6 +212,17 @@ io.on('connection', (socket) => {
     rooms.set(roomId, newState);
     broadcastState(roomId);
     scheduleComputerAction(roomId);
+  });
+
+  socket.on('reaction', (emoji: string) => {
+    const roomId = socketToRoom.get(socket.id);
+    const playerId = socketToPlayer.get(socket.id);
+    if (!roomId || !playerId) return;
+    const state = rooms.get(roomId);
+    if (!state) return;
+    const player = state.players.find(p => p.id === playerId);
+    if (!player) return;
+    io.in(roomId).emit('player_reaction', playerId, player.name, emoji);
   });
 
   socket.on('disconnect', () => {

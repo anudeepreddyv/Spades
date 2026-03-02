@@ -5,6 +5,9 @@ import { CardComponent, CardBack } from './CardComponent';
 import { BiddingPanel } from './BiddingPanel';
 import { ScoreBoard } from './ScoreBoard';
 import { useScreenSize } from '../hooks/useScreenSize';
+import { Reactions } from '../hooks/useGame';
+
+const REACTION_EMOJIS = ['😁', '😂', '😡', '😨', '😭', '🤭', '👍'];
 
 interface GameTableProps {
   state: PublicGameState;
@@ -12,26 +15,28 @@ interface GameTableProps {
   onBid: (bid: any) => void;
   onNextRound: () => void;
   onLeave: () => void;
+  reactions: Reactions;
+  onReaction: (emoji: string) => void;
 }
 
-const TEAM_COLORS = ['#93c5fd','#fca5a5','#86efac','#fde68a','#c4b5fd','#f9a8d4','#6ee7b7'];
+const TEAM_COLORS = ['#93c5fd', '#fca5a5', '#86efac', '#fde68a', '#c4b5fd', '#f9a8d4', '#6ee7b7'];
 
 type XY = { x: string; y: string; anchor: string };
 
 function opponentSeatXY(i: number): XY {
   const slots: XY[] = [
-    { x: '50%',  y: '0%',   anchor: 'translate(-50%, -110%)' },
-    { x: '80%',  y: '0%',   anchor: 'translate(-50%, -110%)' },
-    { x: '100%', y: '25%',  anchor: 'translate(10%, -50%)'   },
-    { x: '100%', y: '50%',  anchor: 'translate(10%, -50%)'   },
-    { x: '100%', y: '75%',  anchor: 'translate(10%, -50%)'   },
-    { x: '80%',  y: '100%', anchor: 'translate(-50%, 10%)'   },
-    { x: '50%',  y: '100%', anchor: 'translate(-50%, 10%)'   },
-    { x: '20%',  y: '100%', anchor: 'translate(-50%, 10%)'   },
-    { x: '0%',   y: '75%',  anchor: 'translate(-110%, -50%)' },
-    { x: '0%',   y: '50%',  anchor: 'translate(-110%, -50%)' },
-    { x: '0%',   y: '25%',  anchor: 'translate(-110%, -50%)' },
-    { x: '20%',  y: '0%',   anchor: 'translate(-50%, -110%)' },
+    { x: '50%', y: '0%', anchor: 'translate(-50%, -110%)' },
+    { x: '80%', y: '0%', anchor: 'translate(-50%, -110%)' },
+    { x: '100%', y: '25%', anchor: 'translate(10%, -50%)' },
+    { x: '100%', y: '50%', anchor: 'translate(10%, -50%)' },
+    { x: '100%', y: '75%', anchor: 'translate(10%, -50%)' },
+    { x: '80%', y: '100%', anchor: 'translate(-50%, 10%)' },
+    { x: '50%', y: '100%', anchor: 'translate(-50%, 10%)' },
+    { x: '20%', y: '100%', anchor: 'translate(-50%, 10%)' },
+    { x: '0%', y: '75%', anchor: 'translate(-110%, -50%)' },
+    { x: '0%', y: '50%', anchor: 'translate(-110%, -50%)' },
+    { x: '0%', y: '25%', anchor: 'translate(-110%, -50%)' },
+    { x: '20%', y: '0%', anchor: 'translate(-50%, -110%)' },
   ];
   return slots[i % slots.length];
 }
@@ -95,8 +100,29 @@ function TableCard({ card, animKey }: { card: Card; animKey: string }) {
   );
 }
 
+// ─── Reaction Bubble ──────────────────────────────────────────────────────────
+function ReactionBubble({ emoji, compact }: { emoji: string; compact: boolean }) {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: compact ? -28 : -36,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 50,
+      animation: 'reactionPop 0.3s cubic-bezier(0.175,0.885,0.32,1.275) forwards',
+      pointerEvents: 'none',
+    }}>
+      <div style={{
+        fontSize: compact ? 22 : 28,
+        filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))',
+        lineHeight: 1,
+      }}>{emoji}</div>
+    </div>
+  );
+}
+
 // ─── Opponent seat ────────────────────────────────────────────────────────────
-function OpponentSeat({ player, state, xy, compact }: { player: Player; state: PublicGameState; xy: XY; compact: boolean }) {
+function OpponentSeat({ player, state, xy, compact, reaction }: { player: Player; state: PublicGameState; xy: XY; compact: boolean; reaction?: string }) {
   const isActive = state.players[state.currentPlayerIndex]?.id === player.id;
   const isDealer = state.players[state.dealerIndex]?.id === player.id;
   const bid = state.bids[player.id];
@@ -107,6 +133,7 @@ function OpponentSeat({ player, state, xy, compact }: { player: Player; state: P
 
   return (
     <div style={{ position: 'absolute', left: xy.x, top: xy.y, transform: xy.anchor, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 1 : 3, zIndex: 5 }}>
+      {reaction && <ReactionBubble emoji={reaction} compact={compact} />}
       {/* Card fan — skip on very compact */}
       {!compact && (
         <div style={{ position: 'relative', height: 26, width: Math.max(16, Math.min(cardsLeft, 5) * 6 + 12), marginBottom: 1 }}>
@@ -228,21 +255,22 @@ function MyPanel({ player, state, isMyTurn, isMobile }: { player: Player; state:
 }
 
 // ─── Main GameTable ───────────────────────────────────────────────────────────
-export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: GameTableProps) {
+export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reactions, onReaction }: GameTableProps) {
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
-  const [showScore, setShowScore]       = useState(false);
-  const [showDealing, setShowDealing]   = useState(false);
+  const [showScore, setShowScore] = useState(false);
+  const [showDealing, setShowDealing] = useState(false);
   const [scoreVisible, setScoreVisible] = useState(false);
-  const { w, h, isMobile, isTablet }    = useScreenSize();
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const { w, h, isMobile, isTablet } = useScreenSize();
 
-  const [cpuBidToast, setCpuBidToast]   = useState<{ name: string; bid: number } | null>(null);
-  const [frozenTrick, setFrozenTrick]   = useState<Record<string, Card> | null>(null);
+  const [cpuBidToast, setCpuBidToast] = useState<{ name: string; bid: number } | null>(null);
+  const [frozenTrick, setFrozenTrick] = useState<Record<string, Card> | null>(null);
   const freezeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFrozen = frozenTrick !== null;
 
-  const prevPhase   = useRef(state.phase);
-  const prevRound   = useRef(state.round);
-  const prevBids    = useRef<Record<string, any>>(Object.fromEntries(state.players.map(p => [p.id, state.bids[p.id]])));
+  const prevPhase = useRef(state.phase);
+  const prevRound = useRef(state.round);
+  const prevBids = useRef<Record<string, any>>(Object.fromEntries(state.players.map(p => [p.id, state.bids[p.id]])));
 
   // Bid toast
   useEffect(() => {
@@ -262,7 +290,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
 
   // Trick freeze
   const completedTricksCount = state.completedTricks.length;
-  const prevCompletedCount   = useRef(state.completedTricks.length);
+  const prevCompletedCount = useRef(state.completedTricks.length);
   useEffect(() => {
     const prev = prevCompletedCount.current;
     prevCompletedCount.current = completedTricksCount;
@@ -301,19 +329,19 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
   }, [state.phase, state.round]);
 
   // Delay scoring overlay by 2.5s after last trick
-useEffect(() => {
-  if (state.phase === 'scoring' || state.phase === 'finished') {
-    const t = setTimeout(() => setScoreVisible(true), 2500);
-    return () => clearTimeout(t);
-  } else {
-    setScoreVisible(false);
-  }
-}, [state.phase]);
+  useEffect(() => {
+    if (state.phase === 'scoring' || state.phase === 'finished') {
+      const t = setTimeout(() => setScoreVisible(true), 2500);
+      return () => clearTimeout(t);
+    } else {
+      setScoreVisible(false);
+    }
+  }, [state.phase]);
 
-  const myPlayer   = state.players.find(p => p.id === state.myPlayerId)!;
-  const opponents  = state.players.filter(p => p.id !== state.myPlayerId);
+  const myPlayer = state.players.find(p => p.id === state.myPlayerId)!;
+  const opponents = state.players.filter(p => p.id !== state.myPlayerId);
   const isMyTurnServer = state.players[state.currentPlayerIndex]?.id === state.myPlayerId;
-  const isMyTurn       = isMyTurnServer && !isFrozen;
+  const isMyTurn = isMyTurnServer && !isFrozen;
 
   // Playable cards
   const playableIds = new Set<string>();
@@ -329,8 +357,8 @@ useEffect(() => {
     else setSelectedCard(card.id);
   };
 
-  const suitOrder = ['spades','hearts','diamonds','clubs'];
-  const rankOrder = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+  const suitOrder = ['spades', 'hearts', 'diamonds', 'clubs'];
+  const rankOrder = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   const sortedHand = [...state.myHand].sort((a, b) => {
     const si = suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
     return si !== 0 ? si : rankOrder.indexOf(a.rank) - rankOrder.indexOf(b.rank);
@@ -344,15 +372,15 @@ useEffect(() => {
   useEffect(() => { prevTrickMap.current = { ...displayCardMap }; });
 
   // ── Responsive sizing ──────────────────────────────────────────────────────
-  const panelW     = isMobile ? 52 : 140;
-  const topBarH    = isMobile ? 38 : 44;
+  const panelW = isMobile ? 52 : 140;
+  const topBarH = isMobile ? 38 : 44;
   // Hand area: card height + hint text + padding
-  const cardH      = isMobile ? 90 : 100;
-  const handAreaH  = cardH + (isMobile ? 22 : 28);
+  const cardH = isMobile ? 90 : 100;
+  const handAreaH = cardH + (isMobile ? 22 : 28);
   // Table: square that fills available space
-  const availW     = w - panelW - (isMobile ? 4 : 32);
-  const availH     = h - topBarH - handAreaH - (isMobile ? 4 : 24);
-  const tableSize  = Math.max(160, Math.min(availW, availH, isMobile ? 300 : 520));
+  const availW = w - panelW - (isMobile ? 4 : 32);
+  const availH = h - topBarH - handAreaH - (isMobile ? 4 : 24);
+  const tableSize = Math.max(160, Math.min(availW, availH, isMobile ? 300 : 520));
   // On mobile, opponents are shown compact (no card fan, smaller chips)
   const compactOpponents = isMobile;
 
@@ -363,6 +391,7 @@ useEffect(() => {
         @keyframes handDeal { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes myTurnPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
         @keyframes toastIn { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+        @keyframes reactionPop { 0%{transform:translateX(-50%) scale(0);opacity:0} 60%{transform:translateX(-50%) scale(1.2);opacity:1} 100%{transform:translateX(-50%) scale(1);opacity:1} }
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         button { touch-action: manipulation; }
       `}</style>
@@ -439,7 +468,7 @@ useEffect(() => {
               <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', opacity: 0.04, backgroundImage: 'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 40px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 40px)' }} />
 
               {opponents.map((player, i) => (
-                <OpponentSeat key={player.id} player={player} state={state} xy={opponentSeatXY(i)} compact={compactOpponents} />
+                <OpponentSeat key={player.id} player={player} state={state} xy={opponentSeatXY(i)} compact={compactOpponents} reaction={reactions[player.id]?.emoji} />
               ))}
               {opponents.map((player, i) => {
                 const card = displayCardMap[player.id];
@@ -497,6 +526,83 @@ useEffect(() => {
             {showScore && state.phase === 'playing' && (
               <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 30, maxHeight: '90%', overflowY: 'auto' }}>
                 <ScoreBoard state={state} />
+              </div>
+            )}
+
+            {/* Emoji picker button */}
+            <div style={{ position: 'absolute', bottom: isMobile ? 6 : 10, left: isMobile ? 6 : 10, zIndex: 35 }}>
+              <button
+                onClick={() => setEmojiPickerOpen(v => !v)}
+                style={{
+                  width: isMobile ? 36 : 40,
+                  height: isMobile ? 36 : 40,
+                  borderRadius: '50%',
+                  border: emojiPickerOpen ? '2px solid rgba(245,200,66,0.6)' : '1.5px solid rgba(255,255,255,0.15)',
+                  background: emojiPickerOpen ? 'rgba(245,200,66,0.15)' : 'rgba(0,0,0,0.45)',
+                  cursor: 'pointer',
+                  fontSize: isMobile ? 18 : 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backdropFilter: 'blur(6px)',
+                  transition: 'all 0.15s',
+                  boxShadow: '0 3px 12px rgba(0,0,0,0.4)',
+                }}
+              >😀</button>
+              {emojiPickerOpen && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: isMobile ? 42 : 48,
+                  left: 0,
+                  display: 'flex',
+                  gap: isMobile ? 2 : 4,
+                  background: 'rgba(13,26,16,0.95)',
+                  border: '1px solid rgba(245,200,66,0.3)',
+                  borderRadius: 12,
+                  padding: isMobile ? '6px 6px' : '8px 10px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+                  animation: 'toastIn 0.15s ease',
+                  backdropFilter: 'blur(8px)',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {REACTION_EMOJIS.map(emoji => (
+                    <button
+                      key={emoji}
+                      onClick={() => { onReaction(emoji); setEmojiPickerOpen(false); }}
+                      style={{
+                        fontSize: isMobile ? 22 : 26,
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        borderRadius: 8,
+                        padding: isMobile ? '4px 3px' : '4px 5px',
+                        transition: 'background 0.12s',
+                        lineHeight: 1,
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(245,200,66,0.15)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    >{emoji}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Self reaction bubble */}
+            {reactions[state.myPlayerId] && (
+              <div style={{
+                position: 'absolute',
+                bottom: isMobile ? 6 : 10,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 35,
+                animation: 'reactionPop 0.3s cubic-bezier(0.175,0.885,0.32,1.275) forwards',
+                pointerEvents: 'none',
+              }}>
+                <div style={{
+                  fontSize: isMobile ? 28 : 34,
+                  filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))',
+                  lineHeight: 1,
+                }}>{reactions[state.myPlayerId].emoji}</div>
               </div>
             )}
           </div>

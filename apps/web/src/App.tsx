@@ -5,7 +5,7 @@ import { WaitingRoom } from './components/WaitingRoom';
 import { GameTable } from './components/GameTable';
 
 export default function App() {
-  const { session, createRoom, joinRoom, startGame, placeBid, playCard, nextRound, leaveGame } = useGame();
+  const { session, reactions, createRoom, joinRoom, startGame, placeBid, playCard, nextRound, leaveGame, sendReaction } = useGame();
   const { gameState, error, connected } = session;
 
   // Auto-start when vs CPU: both players are present and game is waiting
@@ -47,6 +47,8 @@ export default function App() {
       onBid={placeBid}
       onNextRound={nextRound}
       onLeave={leaveGame}
+      reactions={reactions}
+      onReaction={sendReaction}
     />
   );
 }
