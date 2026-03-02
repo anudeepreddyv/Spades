@@ -57,6 +57,7 @@ export function CardComponent({ card, onClick, selected, disabled, size = 'md', 
     boxSizing: 'border-box',
     flexShrink: 0,
     position: 'relative',
+    overflow: 'hidden',
     WebkitTapHighlightColor: 'transparent',
   };
 
