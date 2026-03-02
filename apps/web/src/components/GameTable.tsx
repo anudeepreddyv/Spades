@@ -482,7 +482,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave }: Ga
           {/* ── My Hand ── */}
           <div style={{ flexShrink: 0, paddingBottom: isMobile ? 4 : 8, paddingTop: isMobile ? 3 : 5, background: 'rgba(0,0,0,0.28)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
             <div style={{ textAlign: 'center', height: isMobile ? 14 : 16, marginBottom: isMobile ? 2 : 4 }}>
-              <span style={{ fontSize: isMobile ? 9 : 11, fontFamily: "'DM Sans', sans-serif", color: isMyTurn && state.phase === 'playing' ? '#f5c842' : 'rgba(160,200,160,0.4)' }}>
+              <span style={{ fontSize: isMobile ? 11 : 13, fontFamily: "'DM Sans', sans-serif", color: isMyTurn && state.phase === 'playing' ? '#f5c842' : 'rgba(200,240,200,0.85)' }}>
                 {isMyTurn && state.phase === 'playing'
                   ? (isMobile ? 'Tap · tap again to play' : '✨ Click once to select · click again to play')
                   : state.phase === 'playing'
