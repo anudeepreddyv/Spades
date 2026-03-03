@@ -20,10 +20,25 @@ function getShortName(name: string, max: number): string {
 // ── Round History Table ───────────────────────────────────────────────────────
 function RoundHistoryTable({ state, compact }: { state: PublicGameState; compact: boolean }) {
   const teamCount = state.teamScores.length;
-  const roundCount = state.teamScores[0]?.roundHistory?.length ?? 0;
   const myTeamIdx = state.players.find(p => p.id === state.myPlayerId)?.teamIndex ?? 0;
 
-  if (roundCount === 0) return null;
+  // Use roundHistory if available, otherwise fall back to roundScores
+  const hasHistory = (state.teamScores[0]?.roundHistory?.length ?? 0) > 0;
+  const roundCount = hasHistory
+    ? state.teamScores[0].roundHistory.length
+    : (state.teamScores[0]?.roundScores?.length ?? 0);
+
+  if (roundCount === 0) {
+    return (
+      <div style={{
+        textAlign: 'center', padding: compact ? '10px 6px' : '16px 10px',
+        color: 'rgba(160,200,160,0.4)', fontSize: compact ? 10 : 12,
+        fontFamily: "'DM Sans', sans-serif",
+      }}>
+        No rounds completed yet
+      </div>
+    );
+  }
 
   const cellPad = compact ? '3px 4px' : '5px 8px';
   const fontSize = compact ? 9 : 11;
@@ -89,29 +104,42 @@ function RoundHistoryTable({ state, compact }: { state: PublicGameState; compact
                 {rIdx + 1}
               </td>
               {state.teamScores.map((ts, ti) => {
-                const h = ts.roundHistory[rIdx];
-                if (!h) return <React.Fragment key={ti}><td style={tdStyle}>-</td><td style={tdStyle}>-</td></React.Fragment>;
+                const h = hasHistory ? ts.roundHistory?.[rIdx] : null;
+                const fallbackDelta = !hasHistory ? (ts.roundScores?.[rIdx] ?? null) : null;
+                if (!h && fallbackDelta === null) return <React.Fragment key={ti}><td style={tdStyle}>-</td><td style={tdStyle}>-</td></React.Fragment>;
                 const color = TEAM_COLORS[ti % TEAM_COLORS.length];
                 const isMe = ti === myTeamIdx;
+
+                if (h) {
+                  return (
+                    <React.Fragment key={ti}>
+                      <td style={tdStyle}>
+                        <span style={{ color: isMe ? '#f5c842' : color, fontWeight: 600 }}>{h.bids}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.15)' }}>/</span>
+                        <span style={{ color: h.tricks >= h.bids ? '#4ade80' : '#f87171', fontWeight: 600 }}>{h.tricks}</span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ color: h.scoreDelta >= 0 ? '#4ade80' : '#f87171', fontWeight: 700 }}>
+                          {h.scoreDelta >= 0 ? '+' : ''}{h.scoreDelta}
+                        </span>
+                        {h.bags > 0 && (
+                          <span style={{ fontSize: compact ? 7 : 8, color: 'rgba(251,191,36,0.7)', marginLeft: 2 }}>
+                            +{h.bags}B
+                          </span>
+                        )}
+                      </td>
+                    </React.Fragment>
+                  );
+                }
+
+                // Fallback: only have score delta from roundScores
                 return (
                   <React.Fragment key={ti}>
+                    <td style={{ ...tdStyle, color: 'rgba(255,255,255,0.2)' }}>-</td>
                     <td style={tdStyle}>
-                      <span style={{ color: isMe ? '#f5c842' : color, fontWeight: 600 }}>{h.bids}</span>
-                      <span style={{ color: 'rgba(255,255,255,0.15)' }}>/</span>
-                      <span style={{ color: h.tricks >= h.bids ? '#4ade80' : '#f87171', fontWeight: 600 }}>{h.tricks}</span>
-                    </td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        color: h.scoreDelta >= 0 ? '#4ade80' : '#f87171',
-                        fontWeight: 700,
-                      }}>
-                        {h.scoreDelta >= 0 ? '+' : ''}{h.scoreDelta}
+                      <span style={{ color: fallbackDelta! >= 0 ? '#4ade80' : '#f87171', fontWeight: 700 }}>
+                        {fallbackDelta! >= 0 ? '+' : ''}{fallbackDelta}
                       </span>
-                      {h.bags > 0 && (
-                        <span style={{ fontSize: compact ? 7 : 8, color: 'rgba(251,191,36,0.7)', marginLeft: 2 }}>
-                          +{h.bags}B
-                        </span>
-                      )}
                     </td>
                   </React.Fragment>
                 );
