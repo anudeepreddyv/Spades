@@ -390,6 +390,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
 
   // Play loss sound when my team misses their bid
   const lossRoundPlayed = useRef(0);
+  const gameLossPlayed = useRef(false);
   useEffect(() => {
     if ((state.phase === 'scoring' || state.phase === 'finished') && state.round > lossRoundPlayed.current) {
       const myTeamIdx = state.players.find(p => p.id === state.myPlayerId)?.teamIndex ?? 0;
@@ -398,6 +399,16 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
         lossRoundPlayed.current = state.round;
         const audio = new Audio('/sounds/faaa.mp3');
         audio.volume = 0.7;
+        audio.play().catch(() => { });
+      }
+    }
+    // Play game-over loss sound for the losing team
+    if (state.phase === 'finished' && state.winner !== null && !gameLossPlayed.current) {
+      const myTeamIdx = state.players.find(p => p.id === state.myPlayerId)?.teamIndex ?? 0;
+      if (myTeamIdx !== state.winner) {
+        gameLossPlayed.current = true;
+        const audio = new Audio('/sounds/lost.mp3');
+        audio.volume = 0.8;
         audio.play().catch(() => { });
       }
     }
