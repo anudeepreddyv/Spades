@@ -35,6 +35,15 @@ export interface Trick {
 
 export type GamePhase = 'waiting' | 'dealing' | 'bidding' | 'playing' | 'scoring' | 'finished';
 
+export interface RoundHistoryEntry {
+  bids: number;
+  tricks: number;
+  scoreDelta: number;
+  bags: number;         // bags earned this round
+  totalScore: number;   // cumulative score after this round
+  totalBags: number;    // cumulative bags after this round
+}
+
 // One score entry per team (or per player in individual mode)
 export interface TeamScore {
   score: number;       // base score (bids only, no bags counted here)
@@ -42,6 +51,7 @@ export interface TeamScore {
   bids: number;        // bid this round
   tricks: number;      // tricks won this round
   roundScores: number[]; // per-round base score delta (no bag penalties mid-game)
+  roundHistory: RoundHistoryEntry[]; // detailed per-round history
 }
 
 export interface GameConfig {

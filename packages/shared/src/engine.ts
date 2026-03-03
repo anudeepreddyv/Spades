@@ -1,9 +1,9 @@
 import { Card, Suit, Rank, GameState, GameConfig, Player, TrickCard, BidValue, TeamScore, TeamMode } from './types';
 
 const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
-const RANKS: Rank[] = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 const RANK_VALUES: Record<Rank, number> = {
-  '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14
+  '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
 };
 
 export const TOTAL_ROUNDS = 13;
@@ -38,7 +38,7 @@ export function getTeamCount(mode: TeamMode, playerCount: number, numTeams?: num
 
 function makeTeamScores(count: number): TeamScore[] {
   return Array.from({ length: count }, () => ({
-    score: 0, bags: 0, bids: 0, tricks: 0, roundScores: [],
+    score: 0, bags: 0, bids: 0, tricks: 0, roundScores: [], roundHistory: [],
   }));
 }
 
@@ -247,6 +247,17 @@ export function calculateRoundScore(state: GameState): GameState {
     newTeamScores[ti].tricks = teamTricks;
     newTeamScores[ti].score += delta;
     newTeamScores[ti].roundScores.push(delta);
+
+    // Push detailed round history entry
+    const bagsThisRound = teamTricks >= teamBid ? teamTricks - teamBid : 0;
+    newTeamScores[ti].roundHistory.push({
+      bids: teamBid,
+      tricks: teamTricks,
+      scoreDelta: delta,
+      bags: bagsThisRound,
+      totalScore: newTeamScores[ti].score,
+      totalBags: newTeamScores[ti].bags,
+    });
   }
 
   const isGameOver = state.round >= TOTAL_ROUNDS;
