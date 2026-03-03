@@ -215,7 +215,7 @@ export function calculateRoundScore(state: GameState): GameState {
     if (trick.winnerId) tricksWon[trick.winnerId]++;
 
   const newTeamScores: TeamScore[] = state.teamScores.map(ts => ({
-    ...ts, roundScores: [...ts.roundScores],
+    ...ts, roundScores: [...ts.roundScores], roundHistory: [...(ts.roundHistory || [])],
   }));
 
   for (let ti = 0; ti < teamCount; ti++) {
