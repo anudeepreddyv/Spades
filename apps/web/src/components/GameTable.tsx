@@ -7,7 +7,7 @@ import { ScoreBoard } from './ScoreBoard';
 import { useScreenSize } from '../hooks/useScreenSize';
 import { Reactions } from '../hooks/useGame';
 
-const REACTION_EMOJIS = ['😁', '😂', '😡', '😨', '😭', '🤭', '👍'];
+const REACTION_EMOJIS = ['😁', '😂', '😡', '😨', '😭', '🤭', '👍', '😯', '😝'];
 
 interface GameTableProps {
   state: PublicGameState;
@@ -124,6 +124,7 @@ function ReactionBubble({ emoji, compact }: { emoji: string; compact: boolean })
 
 // ─── Opponent seat ────────────────────────────────────────────────────────────
 function OpponentSeat({ player, state, xy, compact, reaction }: { player: Player; state: PublicGameState; xy: XY; compact: boolean; reaction?: string }) {
+  const [showInfo, setShowInfo] = React.useState(false);
   const isActive = state.players[state.currentPlayerIndex]?.id === player.id;
   const isDealer = state.players[state.dealerIndex]?.id === player.id;
   const bid = state.bids[player.id];
@@ -132,8 +133,13 @@ function OpponentSeat({ player, state, xy, compact, reaction }: { player: Player
   const cardsLeft = state.round - state.completedTricks.length;
   const av = compact ? 26 : 38;
 
+  // Compute team-level bid/win for the popup
+  const teamMembers = state.players.filter(p => p.teamIndex === player.teamIndex);
+  const teamBid = teamMembers.reduce((s, p) => s + ((state.bids[p.id] as number) || 0), 0);
+  const teamWon = teamMembers.reduce((s, p) => s + state.completedTricks.filter(t => t.winnerId === p.id).length, 0);
+
   return (
-    <div style={{ position: 'absolute', left: xy.x, top: xy.y, transform: xy.anchor, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 1 : 3, zIndex: 5 }}>
+    <div style={{ position: 'absolute', left: xy.x, top: xy.y, transform: xy.anchor, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 1 : 3, zIndex: showInfo ? 40 : 5 }}>
       {reaction && <ReactionBubble emoji={reaction} compact={compact} />}
       {/* Card fan — skip on very compact */}
       {!compact && (
@@ -145,13 +151,18 @@ function OpponentSeat({ player, state, xy, compact, reaction }: { player: Player
           ))}
         </div>
       )}
-      {/* Avatar */}
-      <div style={{ width: av, height: av, borderRadius: '50%', background: `${color}28`, border: `2px solid ${isActive ? '#f5c842' : color + '99'}`, boxShadow: isActive ? '0 0 10px rgba(245,200,66,0.7)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: compact ? 11 : 14, fontWeight: 700, color, fontFamily: "'DM Sans', sans-serif", position: 'relative', flexShrink: 0 }}>
+      {/* Avatar — tappable */}
+      <div
+        onClick={() => setShowInfo(v => !v)}
+        style={{ width: av, height: av, borderRadius: '50%', background: `${color}28`, border: `2px solid ${isActive ? '#f5c842' : color + '99'}`, boxShadow: isActive ? '0 0 10px rgba(245,200,66,0.7)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: compact ? 11 : 14, fontWeight: 700, color, fontFamily: "'DM Sans', sans-serif", position: 'relative', flexShrink: 0, cursor: 'pointer' }}>
         {player.name[0].toUpperCase()}
         {isDealer && <div style={{ position: 'absolute', top: -3, right: -3, background: '#f5c842', color: '#0d1b2a', borderRadius: '50%', width: compact ? 10 : 13, height: compact ? 10 : 13, fontSize: compact ? 5 : 7, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>D</div>}
       </div>
       {/* Name + bid */}
-      <div style={{ background: 'rgba(0,0,0,0.65)', borderRadius: 5, padding: compact ? '1px 4px' : '2px 7px', border: `1px solid ${isActive ? 'rgba(245,200,66,0.4)' : 'rgba(255,255,255,0.06)'}` }}>
+      <div
+        onClick={() => setShowInfo(v => !v)}
+        style={{ background: 'rgba(0,0,0,0.65)', borderRadius: 5, padding: compact ? '1px 4px' : '2px 7px', border: `1px solid ${isActive ? 'rgba(245,200,66,0.4)' : 'rgba(255,255,255,0.06)'}`, cursor: 'pointer' }}
+      >
         <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: compact ? 8 : 10, fontWeight: 600, color: isActive ? '#f5c842' : 'rgba(220,240,220,0.9)', whiteSpace: 'nowrap' }}>
           {player.name.length > (compact ? 4 : 8) ? player.name.slice(0, compact ? 3 : 7) + '…' : player.name}{isActive ? ' ●' : ''}
         </div>
@@ -163,6 +174,44 @@ function OpponentSeat({ player, state, xy, compact, reaction }: { player: Player
           </div>
         )}
       </div>
+      {/* Info popup */}
+      {showInfo && (
+        <div
+          onClick={() => setShowInfo(false)}
+          style={{
+            position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+            marginTop: 4, zIndex: 50, minWidth: 120,
+            background: 'rgba(13,26,16,0.96)', border: '1px solid rgba(245,200,66,0.35)',
+            borderRadius: 10, padding: '8px 12px', boxShadow: '0 8px 28px rgba(0,0,0,0.7)',
+            animation: 'toastIn 0.15s ease', backdropFilter: 'blur(8px)', whiteSpace: 'nowrap',
+          }}
+        >
+          <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color, marginBottom: 4 }}>
+            {player.name}
+          </div>
+          {bid !== null && bid !== undefined && (
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9 }}>Bid </span>
+              <span style={{ color: '#f5c842', fontWeight: 700 }}>{bid}</span>
+              <span style={{ color: 'rgba(255,255,255,0.15)' }}> / </span>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9 }}>Won </span>
+              <span style={{ color: '#4ade80', fontWeight: 700 }}>{won}</span>
+            </div>
+          )}
+          {teamMembers.length > 1 && (
+            <div style={{ marginTop: 6, paddingTop: 5, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: 'rgba(255,255,255,0.35)', marginBottom: 2 }}>TEAM</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9 }}>Bid </span>
+                <span style={{ color: '#f5c842', fontWeight: 700 }}>{teamBid}</span>
+                <span style={{ color: 'rgba(255,255,255,0.15)' }}> / </span>
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 9 }}>Won </span>
+                <span style={{ color: '#4ade80', fontWeight: 700 }}>{teamWon}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -457,11 +506,9 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
               </span>
             ))}
           </div>
-          {!isMobile && (
-            <button onClick={() => setShowScore(s => !s)} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: showScore ? '#f5c842' : 'rgba(200,230,200,0.5)', background: showScore ? 'rgba(245,200,66,0.12)' : 'rgba(255,255,255,0.05)', border: `1px solid ${showScore ? 'rgba(245,200,66,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
-              {showScore ? 'Hide' : 'Score'}
-            </button>
-          )}
+          <button onClick={() => setShowScore(s => !s)} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? 10 : 11, color: showScore ? '#f5c842' : 'rgba(200,230,200,0.5)', background: showScore ? 'rgba(245,200,66,0.12)' : 'rgba(255,255,255,0.05)', border: `1px solid ${showScore ? 'rgba(245,200,66,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: isMobile ? '4px 7px' : '4px 10px', cursor: 'pointer' }}>
+            {showScore ? 'Hide' : '📊'}
+          </button>
           <button onClick={onLeave} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? 10 : 11, fontWeight: 600, color: '#fca5a5', background: 'rgba(220,50,50,0.12)', border: '1px solid rgba(220,80,80,0.35)', borderRadius: 6, padding: isMobile ? '5px 8px' : '4px 11px', cursor: 'pointer', minHeight: 28, touchAction: 'manipulation' }}>
             ✕ {!isMobile && 'Leave'}
           </button>
