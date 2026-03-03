@@ -170,7 +170,7 @@ io.on('connection', (socket) => {
     const dealt = dealCards({
       ...state,
       players: assignedPlayers,
-      teamScores: Array.from({ length: teamCount }, () => ({ score: 0, bags: 0, bids: 0, tricks: 0, roundScores: [] })),
+      teamScores: Array.from({ length: teamCount }, () => ({ score: 0, bags: 0, bids: 0, tricks: 0, roundScores: [], roundHistory: [] as any[] })),
     });
     rooms.set(roomId, dealt);
     broadcastState(roomId);
