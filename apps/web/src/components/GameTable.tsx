@@ -388,6 +388,21 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
     }
   }, [state.phase]);
 
+  // Play loss sound when my team misses their bid
+  const lossRoundPlayed = useRef(0);
+  useEffect(() => {
+    if ((state.phase === 'scoring' || state.phase === 'finished') && state.round > lossRoundPlayed.current) {
+      const myTeamIdx = state.players.find(p => p.id === state.myPlayerId)?.teamIndex ?? 0;
+      const myTeam = state.teamScores[myTeamIdx];
+      if (myTeam && myTeam.tricks < myTeam.bids) {
+        lossRoundPlayed.current = state.round;
+        const audio = new Audio('/sounds/faaa.mp3');
+        audio.volume = 0.7;
+        audio.play().catch(() => { });
+      }
+    }
+  }, [state.phase, state.round]);
+
   const myPlayer = state.players.find(p => p.id === state.myPlayerId)!;
   const opponents = state.players.filter(p => p.id !== state.myPlayerId);
   const isMyTurnServer = state.players[state.currentPlayerIndex]?.id === state.myPlayerId;
