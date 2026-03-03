@@ -111,20 +111,24 @@ function RoundHistoryTable({ state, compact }: { state: PublicGameState; compact
                 const isMe = ti === myTeamIdx;
 
                 if (h) {
+                  // Compute pure round score from bids/tricks (not h.scoreDelta which includes bag penalties)
+                  const madeBid = h.tricks >= h.bids;
+                  const pureScore = madeBid ? h.bids * 10 : -(h.bids * 10);
+                  const bagsEarned = madeBid ? h.tricks - h.bids : 0;
                   return (
                     <React.Fragment key={ti}>
                       <td style={tdStyle}>
                         <span style={{ color: isMe ? '#f5c842' : color, fontWeight: 600 }}>{h.bids}</span>
                         <span style={{ color: 'rgba(255,255,255,0.15)' }}>/</span>
-                        <span style={{ color: h.tricks >= h.bids ? '#4ade80' : '#f87171', fontWeight: 600 }}>{h.tricks}</span>
+                        <span style={{ color: madeBid ? '#4ade80' : '#f87171', fontWeight: 600 }}>{h.tricks}</span>
                       </td>
                       <td style={tdStyle}>
-                        <span style={{ color: h.scoreDelta >= 0 ? '#4ade80' : '#f87171', fontWeight: 700 }}>
-                          {h.scoreDelta >= 0 ? '+' : ''}{h.scoreDelta}
+                        <span style={{ color: pureScore >= 0 ? '#4ade80' : '#f87171', fontWeight: 700 }}>
+                          {pureScore >= 0 ? '+' : ''}{pureScore}
                         </span>
-                        {h.bags > 0 && (
+                        {bagsEarned > 0 && (
                           <span style={{ fontSize: compact ? 7 : 8, color: 'rgba(251,191,36,0.7)', marginLeft: 2 }}>
-                            +{h.bags}B
+                            +{bagsEarned}B
                           </span>
                         )}
                       </td>
