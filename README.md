@@ -1,8 +1,8 @@
-# ♠ Spades
+# ♠ Spades — Real-Time Multiplayer Card Game
 
-A fully playable, real-time multiplayer Spades card game — built from scratch with React, Node.js, and Socket.io. Supports 2–52 players, flexible team modes, and a solo mode against a computer opponent.
+A fully playable, real-time multiplayer Spades card game — built from scratch with React, Node.js, and Socket.io. Supports many players, flexible team modes, and a solo mode against a computer opponent.
 
-**Live at → [spades.anudeep.space](https://spades.anudeep.space)**
+**Play now → [spades.anudeep.space](https://spades.anudeep.space)**
 
 ---
 
@@ -22,14 +22,14 @@ The player or team with the highest score after all 13 rounds wins.
 
 ## Features
 
-- **Real-time multiplayer** — Socket.io keeps all clients in sync instantly
-- **2–52 players** — dynamic team formation for any player count, including odd numbers
-- **Team modes** — 2 teams, 3 teams, or individual (everyone for themselves)
-- **CPU opponent** — play solo against a computer that bids and plays strategically
-- **Emoji reactions** — send live reactions that appear as animated bubbles over your avatar
-- **Round history** — detailed per-round score table showing bids, tricks won, and score deltas
-- **Sound effects** — audio feedback when your team misses a bid or loses the game
-- **Mobile responsive** — fully playable on phones and tablets
+- **Real-time multiplayer** — create a room, share the code, and play with friends instantly
+- **Teams** — dynamic team formation, including odd numbers
+- **Modes** — Team Modes, or individual (everyone for themselves)
+- **13-round progressive dealing** — round 1 deals 1 card each, round 2 deals 2, and so on up to 13
+- **CPU opponent** — play solo against an AI-powered computer that bids and plays strategically
+- **Emoji reactions** — send emoji reactions to other players during the game
+- **Score tracking** — complete round-by-round history with bid/trick breakdowns, bags, and penalties
+- **Responsive design** — fully playable on both desktop and mobile browsers
 - **Rejoin support** — reconnect to an in-progress game if you lose connection
 
 ---
@@ -40,11 +40,12 @@ The player or team with the highest score after all 13 rounds wins.
 |---|---|
 | Frontend | React 18, TypeScript, Vite |
 | Backend | Node.js, Express, Socket.io |
-| Shared | TypeScript monorepo package (`@spades/shared`) |
-| Styling | Inline styles with responsive logic via custom `useScreenSize` hook |
+| Game Engine | TypeScript monorepo package (`@spades/shared`) |
+| Real-time | Socket.io (WebSockets) |
+| Styling | Tailwind CSS, Inline styles with responsive logic via custom `useScreenSize` hook |
 | Fonts | Playfair Display, DM Sans, JetBrains Mono (Google Fonts) |
 | Deployment | Vercel (frontend) + Koyeb (backend) |
-| Domain | Cloudflare DNS → `spades.anudeep.space` |
+| Domain | `spades.anudeep.space` |
 
 ---
 
@@ -52,35 +53,34 @@ The player or team with the highest score after all 13 rounds wins.
 
 ```
 spades_game/
-├── apps/
-│   ├── web/                        # React frontend (Vite)
-│   │   ├── src/
-│   │   │   ├── components/
-│   │   │   │   ├── GameTable.tsx   # Main game UI — table, hand, overlays
-│   │   │   │   ├── BiddingPanel.tsx
-│   │   │   │   ├── ScoreBoard.tsx
-│   │   │   │   ├── CardComponent.tsx
-│   │   │   │   ├── Lobby.tsx
-│   │   │   │   └── WaitingRoom.tsx
-│   │   │   ├── hooks/
-│   │   │   │   ├── useGame.ts      # Socket.io event handling + game state
-│   │   │   │   └── useScreenSize.ts
-│   │   │   ├── lib/
-│   │   │   │   └── socket.ts
-│   │   │   └── App.tsx
-│   │   └── public/
-│   │       ├── fonts/
-│   │       └── sounds/             # faaa.mp3, lost.mp3
-│   └── server/
+├── packages/
+│   └── shared/                  # Shared game engine & types
 │       └── src/
-│           ├── index.ts            # Express + Socket.io server
-│           └── computer.ts         # CPU bid and play logic
-└── packages/
-    └── shared/
-        └── src/
-            ├── types.ts            # Shared TypeScript types
-            ├── engine.ts           # Game engine — deal, bid, play, score
-            └── index.ts
+│           ├── types.ts            # TypeScript interfaces (Player, Card, GameState, etc.)
+│           ├── engine.ts           # Pure game logic (dealing, bidding, trick resolution, scoring)
+│           └── index.ts            # Package entry point
+├── apps/
+│   ├── server/                  # Backend server
+│   │   └── src/
+│   │       ├── index.ts            # Express + Socket.io server, room management
+│   │       └── computer.ts         # CPU player AI logic
+│   └── web/                     # Frontend React app
+│       └── src/
+│           ├── App.tsx             # Root component, game phase routing
+│           ├── components/
+│           │   ├── Lobby.tsx          # Room creation & joining
+│           │   ├── WaitingRoom.tsx     # Pre-game lobby with player list
+│           │   ├── GameTable.tsx       # Main game board (table, cards, opponents, overlays)
+│           │   ├── BiddingPanel.tsx    # Bid selection UI
+│           │   ├── ScoreBoard.tsx      # Round results & score history table
+│           │   └── CardComponent.tsx   # Card rendering (face & back)
+│           ├── hooks/
+│           │   ├── useGame.ts         # Game state management & socket communication
+│           │   └── useScreenSize.ts   # Responsive breakpoint detection
+│           └── lib/
+│               └── socket.ts         # Socket.io client singleton
+├── package.json                 # Root workspace config
+└── README.md
 ```
 
 ---
@@ -106,16 +106,16 @@ npm install
 npm run build --workspace=packages/shared
 ```
 
-### Start the backend
+You need two terminals — one for the backend server and one for the frontend dev server.
+
+### Terminal 1 - Start the backend
 
 ```bash
 npm run dev --workspace=apps/server
 # Server runs on http://localhost:3001
 ```
 
-### Start the frontend
-
-In a separate terminal:
+### Terminal 2 - Start the frontend
 
 ```bash
 # Create the env file for local dev
@@ -133,21 +133,31 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## How to Play
 
-1. **Create a room** — enter your name, choose number of players and team format, click "Create Room"
-2. **Share the room code** — send the 5-character code to your friends
-3. **Or play vs CPU** — click the "🤖 CPU" tab for an instant solo game
+1. Open the game in your browser
+2. **Enter your name** on the lobby screen, choose number of players and team format
+3. Choose one of:
+   - **Create a Room** — generates a 5-letter room code
+   - **Play vs CPU** — click the "🤖 CPU" tab for an instant solo game against the computer
+   - **Join Room** — enter a friend's room code to join their game
 4. **Bidding phase** — when it's your turn, tap a number to bid how many tricks you'll win
 5. **Playing phase** — tap a card once to select it, tap again to play it
    - You must follow the led suit if you can
-   - If you can't follow suit, play any card including a spade
+   - If you can't follow suit, play any card including a spade; spades are always trump
    - Spades can't be led until broken (unless you only have spades)
    - The highest spade wins if any spade was played; otherwise highest of the led suit wins
-6. **Scoring** — after each round, see who made their bid and track cumulative scores
+6. **Scoring** — after each round, when all tricks are played, scores are calculated and the next round begins
 7. **After 13 rounds** — the player or team with the most points wins
 
 ---
 
-## Deployment
+## Live Deployment
+
+The game is hosted and playable at:
+
+🌐 **[spades.anudeep.space](https://spades.anudeep.space)**
+
+The domain `anudeep.space` is a custom domain.
+
 
 ### Frontend — Vercel
 
@@ -165,17 +175,6 @@ The server is deployed on Koyeb's free tier (always-on WebSocket support) with:
 - **Run Command:** `node apps/server/dist/index.js`
 - **Port:** `3001`
 - **Environment Variable:** `PORT=3001`
-
-### Domain — Cloudflare
-
-DNS is managed on Cloudflare for `anudeep.space`:
-
-| Subdomain | Points to | Purpose |
-|---|---|---|
-| `spades.anudeep.space` | Vercel (CNAME) | Frontend |
-| `api.anudeep.space` | Koyeb (CNAME) | Backend / WebSocket |
-
-> Proxy is disabled (grey cloud) on both records so Vercel and Koyeb can manage their own SSL certificates.
 
 ---
 
