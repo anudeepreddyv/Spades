@@ -185,7 +185,3 @@ The server is deployed on Koyeb's free tier (always-on WebSocket support) with:
 - **No authentication** — room codes are the only access control. Anyone with the code can join.
 
 ---
-
-## License
-
-MIT
