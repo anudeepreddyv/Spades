@@ -547,53 +547,67 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
-          {/* Table area */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 0, overflow: 'hidden', padding: isMobile ? 2 : 12 }}>
+          {/* Table area wrapper — overlays position relative to this */}
+          <div style={{ flex: 1, position: 'relative', minHeight: 0, overflow: 'hidden' }}>
 
-            {/* Felt table — fixed pixel size calculated from available space */}
-            <div style={{ position: 'relative', width: tableSize, height: tableSize, flexShrink: 0, background: 'radial-gradient(ellipse at 40% 40%,#1e6b38 0%,#124a24 55%,#0c3318 100%)', border: '3px solid rgba(255,255,255,0.09)', borderRadius: isMobile ? 12 : 18, boxShadow: 'inset 0 0 60px rgba(0,0,0,0.5),0 10px 40px rgba(0,0,0,0.65)' }}>
-              <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', opacity: 0.04, backgroundImage: 'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 40px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 40px)' }} />
+            {/* Scrollable inner area — on desktop, scroll to see opponents above table */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: isMobile ? 'center' : undefined,
+              overflow: isMobile ? 'hidden' : 'auto',
+              padding: isMobile ? 2 : 12,
+              scrollbarWidth: 'thin' as any,
+              scrollbarColor: 'rgba(255,255,255,0.15) transparent',
+            }}>
+              {/* Desktop: spacer for opponent seats above the table */}
+              {!isMobile && <div style={{ flexShrink: 0, minHeight: 90 }} />}
 
-              {opponents.map((player, i) => (
-                <OpponentSeat key={player.id} player={player} state={state} xy={opponentSeatXY(i)} compact={compactOpponents} reaction={reactions[player.id]?.emoji} />
-              ))}
-              {opponents.map((player, i) => {
-                const card = displayCardMap[player.id];
-                if (!card) return null;
-                const xy = cardZoneXY(i);
-                return (
-                  <div key={player.id} style={{ position: 'absolute', left: xy.x, top: xy.y, transform: xy.anchor, zIndex: 4 }}>
-                    <TableCard card={card} animKey={`${player.id}-${card.id}`} />
+              {/* Felt table — fixed pixel size calculated from available space */}
+              <div style={{ position: 'relative', width: tableSize, height: tableSize, flexShrink: 0, marginTop: isMobile ? undefined : 'auto', marginBottom: isMobile ? undefined : 'auto', background: 'radial-gradient(ellipse at 40% 40%,#1e6b38 0%,#124a24 55%,#0c3318 100%)', border: '3px solid rgba(255,255,255,0.09)', borderRadius: isMobile ? 12 : 18, boxShadow: 'inset 0 0 60px rgba(0,0,0,0.5),0 10px 40px rgba(0,0,0,0.65)' }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', opacity: 0.04, backgroundImage: 'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 40px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 40px)' }} />
+
+                {opponents.map((player, i) => (
+                  <OpponentSeat key={player.id} player={player} state={state} xy={opponentSeatXY(i)} compact={compactOpponents} reaction={reactions[player.id]?.emoji} />
+                ))}
+                {opponents.map((player, i) => {
+                  const card = displayCardMap[player.id];
+                  if (!card) return null;
+                  const xy = cardZoneXY(i);
+                  return (
+                    <div key={player.id} style={{ position: 'absolute', left: xy.x, top: xy.y, transform: xy.anchor, zIndex: 4 }}>
+                      <TableCard card={card} animKey={`${player.id}-${card.id}`} />
+                    </div>
+                  );
+                })}
+                {(() => {
+                  const card = displayCardMap[state.myPlayerId];
+                  if (!card) return null;
+                  return (
+                    <div style={{ position: 'absolute', left: MY_CARD_ZONE.x, top: MY_CARD_ZONE.y, transform: MY_CARD_ZONE.anchor, zIndex: 4 }}>
+                      <TableCard card={card} animKey={`me-${card.id}`} />
+                    </div>
+                  );
+                })()}
+                {state.phase === 'playing' && Object.keys(displayCardMap).length === 0 && (
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 2 }}>
+                    <div style={{
+                      color: isMyTurn ? 'rgba(245,200,66,0.9)' : 'rgba(200,240,200,0.75)',
+                      fontSize: isMobile ? 13 : 16,
+                      fontWeight: 600,
+                      fontFamily: "'DM Sans', sans-serif",
+                      textShadow: '0 1px 8px rgba(0,0,0,0.8)',
+                      background: 'rgba(0,0,0,0.35)',
+                      borderRadius: 8,
+                      padding: isMobile ? '6px 12px' : '8px 18px',
+                      border: `1px solid ${isMyTurn ? 'rgba(245,200,66,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {isMyTurn ? '✨ Your turn — play a card' : `⏳ ${state.players[state.currentPlayerIndex]?.name}'s turn`}
+                    </div>
                   </div>
-                );
-              })}
-              {(() => {
-                const card = displayCardMap[state.myPlayerId];
-                if (!card) return null;
-                return (
-                  <div style={{ position: 'absolute', left: MY_CARD_ZONE.x, top: MY_CARD_ZONE.y, transform: MY_CARD_ZONE.anchor, zIndex: 4 }}>
-                    <TableCard card={card} animKey={`me-${card.id}`} />
-                  </div>
-                );
-              })()}
-              {state.phase === 'playing' && Object.keys(displayCardMap).length === 0 && (
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', pointerEvents: 'none', zIndex: 2 }}>
-                  <div style={{
-                    color: isMyTurn ? 'rgba(245,200,66,0.9)' : 'rgba(200,240,200,0.75)',
-                    fontSize: isMobile ? 13 : 16,
-                    fontWeight: 600,
-                    fontFamily: "'DM Sans', sans-serif",
-                    textShadow: '0 1px 8px rgba(0,0,0,0.8)',
-                    background: 'rgba(0,0,0,0.35)',
-                    borderRadius: 8,
-                    padding: isMobile ? '6px 12px' : '8px 18px',
-                    border: `1px solid ${isMyTurn ? 'rgba(245,200,66,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {isMyTurn ? '✨ Your turn — play a card' : `⏳ ${state.players[state.currentPlayerIndex]?.name}'s turn`}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Bidding overlay */}
@@ -605,7 +619,7 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
 
             {/* Scoring overlay */}
             {(state.phase === 'scoring' || state.phase === 'finished') && scoreVisible && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5,18,10,0.86)', zIndex: 20, padding: isMobile ? 6 : 16, overflowY: 'auto' }}>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: isMobile ? 'center' : 'flex-start', justifyContent: 'center', background: 'rgba(5,18,10,0.86)', zIndex: 20, padding: isMobile ? 6 : 16, paddingTop: isMobile ? 6 : 24, overflowY: 'auto' }}>
                 <ScoreBoard state={state} onNextRound={state.phase === 'scoring' ? onNextRound : undefined} />
               </div>
             )}
