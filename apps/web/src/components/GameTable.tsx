@@ -125,6 +125,7 @@ function ReactionBubble({ emoji, compact }: { emoji: string; compact: boolean })
 // ─── Opponent seat ────────────────────────────────────────────────────────────
 function OpponentSeat({ player, state, xy, compact, reaction }: { player: Player; state: PublicGameState; xy: XY; compact: boolean; reaction?: string }) {
   const [showInfo, setShowInfo] = React.useState(false);
+  const seatRef = useRef<HTMLDivElement>(null);
   const isActive = state.players[state.currentPlayerIndex]?.id === player.id;
   const isDealer = state.players[state.dealerIndex]?.id === player.id;
   const bid = state.bids[player.id];
@@ -133,13 +134,25 @@ function OpponentSeat({ player, state, xy, compact, reaction }: { player: Player
   const cardsLeft = state.round - state.completedTricks.length;
   const av = compact ? 26 : 38;
 
+  // Close info popup on outside click
+  useEffect(() => {
+    if (!showInfo) return;
+    const handler = (e: MouseEvent) => {
+      if (seatRef.current && !seatRef.current.contains(e.target as Node)) {
+        setShowInfo(false);
+      }
+    };
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
+  }, [showInfo]);
+
   // Compute team-level bid/win for the popup
   const teamMembers = state.players.filter(p => p.teamIndex === player.teamIndex);
   const teamBid = teamMembers.reduce((s, p) => s + ((state.bids[p.id] as number) || 0), 0);
   const teamWon = teamMembers.reduce((s, p) => s + state.completedTricks.filter(t => t.winnerId === p.id).length, 0);
 
   return (
-    <div style={{ position: 'absolute', left: xy.x, top: xy.y, transform: xy.anchor, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 1 : 3, zIndex: showInfo ? 40 : 5 }}>
+    <div ref={seatRef} style={{ position: 'absolute', left: xy.x, top: xy.y, transform: xy.anchor, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: compact ? 1 : 3, zIndex: showInfo ? 40 : 5 }}>
       {reaction && <ReactionBubble emoji={reaction} compact={compact} />}
       {/* Card fan — skip on very compact */}
       {!compact && (
@@ -625,9 +638,12 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
             )}
 
             {showScore && state.phase === 'playing' && (
-              <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 30, maxHeight: '90%', overflowY: 'auto' }}>
-                <ScoreBoard state={state} />
-              </div>
+              <>
+                <div onClick={() => setShowScore(false)} style={{ position: 'fixed', inset: 0, zIndex: 29 }} />
+                <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 30, maxHeight: '90%', overflowY: 'auto' }}>
+                  <ScoreBoard state={state} />
+                </div>
+              </>
             )}
 
             {/* Emoji picker button */}
@@ -651,40 +667,44 @@ export function GameTable({ state, onPlayCard, onBid, onNextRound, onLeave, reac
                 }}
               >😀</button>
               {emojiPickerOpen && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: isMobile ? 42 : 48,
-                  left: 0,
-                  display: 'flex',
-                  gap: isMobile ? 2 : 4,
-                  background: 'rgba(13,26,16,0.95)',
-                  border: '1px solid rgba(245,200,66,0.3)',
-                  borderRadius: 12,
-                  padding: isMobile ? '6px 6px' : '8px 10px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
-                  animation: 'toastIn 0.15s ease',
-                  backdropFilter: 'blur(8px)',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {REACTION_EMOJIS.map(emoji => (
-                    <button
-                      key={emoji}
-                      onClick={() => { onReaction(emoji); setEmojiPickerOpen(false); }}
-                      style={{
-                        fontSize: isMobile ? 22 : 26,
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        borderRadius: 8,
-                        padding: isMobile ? '4px 3px' : '4px 5px',
-                        transition: 'background 0.12s',
-                        lineHeight: 1,
-                      }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(245,200,66,0.15)'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                    >{emoji}</button>
-                  ))}
-                </div>
+                <>
+                  <div onClick={() => setEmojiPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 34 }} />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: isMobile ? 42 : 48,
+                    left: 0,
+                    display: 'flex',
+                    gap: isMobile ? 2 : 4,
+                    background: 'rgba(13,26,16,0.95)',
+                    border: '1px solid rgba(245,200,66,0.3)',
+                    borderRadius: 12,
+                    padding: isMobile ? '6px 6px' : '8px 10px',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+                    animation: 'toastIn 0.15s ease',
+                    backdropFilter: 'blur(8px)',
+                    whiteSpace: 'nowrap',
+                    zIndex: 35,
+                  }}>
+                    {REACTION_EMOJIS.map(emoji => (
+                      <button
+                        key={emoji}
+                        onClick={() => { onReaction(emoji); setEmojiPickerOpen(false); }}
+                        style={{
+                          fontSize: isMobile ? 22 : 26,
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          borderRadius: 8,
+                          padding: isMobile ? '4px 3px' : '4px 5px',
+                          transition: 'background 0.12s',
+                          lineHeight: 1,
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(245,200,66,0.15)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                      >{emoji}</button>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 
